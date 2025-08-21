@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Processed Videos - YouTube Summary Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .loading {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .animate-fade-in {
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        .input-focus {
+            transition: all 0.3s ease;
+        }
+        
+        .input-focus:focus {
+            transform: scale(1.02);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 20px rgba(245, 87, 108, 0.3);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+        }
+        
+        .video-card {
+            transition: all 0.3s ease;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .video-card:hover {
+            border-color: #d1d5db;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 min-h-screen">
+    <!-- Header Section -->
+    <div class="gradient-bg text-white">
+        <div class="container mx-auto px-6 py-12">
+            <div class="text-center animate-fade-in">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-6">
+                    <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+                        <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <h1 class="text-5xl font-bold mb-4 tracking-tight">Processed Videos</h1>
+                <p class="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">View and manage all your extracted transcripts and summaries</p>
+                <a href="index.html" class="inline-flex items-center px-6 py-3 bg-white/20 hover:bg-white/30 rounded-full text-white font-medium transition-all duration-300 hover:scale-105">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                    Back to Summary Generator
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-6 py-12">
+        <div class="max-w-7xl mx-auto space-y-8">
+            <!-- Transcript Viewer Section -->
+            <div class="bg-white rounded-2xl shadow-xl p-8 card-hover animate-fade-in">
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl mb-4">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <h2 class="text-3xl font-bold text-gray-900 mb-2">View Transcript & Summary</h2>
+                    <p class="text-gray-600">Select a processed video to view its transcript and generate summaries</p>
+                </div>
+
+                <div class="space-y-6">
+                    <!-- Video Selector -->
+                    <div>
+                        <label for="transcriptVideoId" class="block text-sm font-semibold text-gray-700 mb-3">Select Video</label>
+                        <div class="relative">
+                            <select id="transcriptVideoId" onchange="loadTranscript()" class="w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 input-focus text-gray-900 appearance-none bg-white">
+                                <option value="">Choose a processed video...</option>
+                            </select>
+                            <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Transcript Result -->
+                    <div id="transcriptResult" class="hidden">
+                        <div class="bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl p-6 border border-gray-200">
+                            <div class="flex items-center mb-4">
+                                <svg class="w-5 h-5 text-gray-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                <h3 class="font-semibold text-gray-900">Transcript</h3>
+                            </div>
+                            <div id="transcriptText" class="whitespace-pre-wrap text-sm max-h-96 overflow-y-auto bg-white p-6 rounded-lg border border-gray-200 leading-relaxed text-gray-800"></div>
+                            <div class="mt-4 text-sm text-gray-600 flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+                                </svg>
+                                <span id="transcriptLength"></span> characters
+                            </div>
+                            
+                            <!-- Summary Controls -->
+                            <div class="mt-6 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center space-x-3">
+                                        <label for="summaryStyle" class="text-sm font-semibold text-gray-700">Summary Style:</label>
+                                        <div class="relative">
+                                            <select id="summaryStyle" class="px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500 input-focus text-gray-900 appearance-none bg-white text-sm">
+                                                <option value="comprehensive">📋 Comprehensive</option>
+                                                <option value="bullet">📝 Bullet Points</option>
+                                                <option value="insights">💡 Key Insights</option>
+                                                <option value="timeline">⏰ Timeline</option>
+                                                <option value="qa">❓ Q&A Format</option>
+                                                <option value="brief">⚡ Brief</option>
+                                            </select>
+                                            <div class="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
+                                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button onclick="summarizeTranscript()" class="btn-secondary text-white px-6 py-2 rounded-lg font-medium text-sm hover:scale-105">
+                                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                        </svg>
+                                        Generate Summary
+                                    </button>
+                                </div>
+                                <div class="text-xs text-indigo-600 flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    Powered by Google Gemini 2.5 Flash • Summaries are cached for faster access
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Summary Result -->
+                    <div id="summaryResult" class="hidden animate-fade-in">
+                        <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center">
+                                    <div class="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg mr-3">
+                                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </div>
+                                    <h3 class="font-semibold text-gray-900">Summary</h3>
+                                </div>
+                                <div class="text-sm text-gray-600 flex items-center space-x-4">
+                                    <span id="summaryStyleLabel" class="inline-flex items-center px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full font-medium text-xs"></span>
+                                    <span id="summaryWordCount" class="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs"></span>
+                                </div>
+                            </div>
+                            <div id="summaryText" class="whitespace-pre-wrap text-sm bg-white p-6 rounded-lg border border-green-200 leading-relaxed text-gray-800"></div>
+                            <div class="mt-3 text-xs text-green-600 flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                <span id="summaryCacheInfo"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Videos List Section -->
+            <div class="bg-white rounded-2xl shadow-xl p-8 card-hover animate-fade-in">
+                <div class="flex justify-between items-center mb-8">
+                    <div class="flex items-center">
+                        <div class="inline-flex items-center justify-center w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg mr-3">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                            </svg>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-900">All Processed Videos</h2>
+                    </div>
+                    <button onclick="loadVideos()" class="btn-success text-white px-6 py-3 rounded-lg font-medium hover:scale-105">
+                        <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        Refresh List
+                    </button>
+                </div>
+                <div id="videosList" class="space-y-4">
+                    <!-- Videos will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+
+        // Load videos list
+        async function loadVideos() {
+            const videosList = document.getElementById('videosList');
+            const transcriptVideoId = document.getElementById('transcriptVideoId');
+
+            try {
+                const response = await fetch(`${API_BASE}/videos`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Update videos list
+                    videosList.innerHTML = '';
+                    transcriptVideoId.innerHTML = '<option value="">Choose a processed video...</option>';
+
+                    if (data.videos.length === 0) {
+                        videosList.innerHTML = `
+                            <div class="text-center py-12">
+                                <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                </div>
+                                <h3 class="text-lg font-semibold text-gray-900 mb-2">No videos processed yet</h3>
+                                <p class="text-gray-600 mb-4">Start by extracting your first transcript!</p>
+                                <a href="index.html" class="btn-primary text-white px-6 py-2 rounded-lg font-medium inline-flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                    </svg>
+                                    Extract First Transcript
+                                </a>
+                            </div>
+                        `;
+                    } else {
+                        // Sort videos by creation date (newest first)
+                        const sortedVideos = data.videos.sort((a, b) => 
+                            new Date(b.created_at) - new Date(a.created_at)
+                        );
+                        
+                        sortedVideos.forEach(video => {
+                            const statusColor = getStatusColor(video.status);
+                            const duration = video.duration ? formatDuration(video.duration) : '';
+                            const uploader = video.uploader || '';
+                            const viewCount = video.view_count ? formatViewCount(video.view_count) : '';
+                            
+                            const videoCard = `
+                                <div class="video-card rounded-xl p-6 hover:bg-gray-50">
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex-1">
+                                            <h3 class="font-bold text-lg text-gray-900 mb-2">${video.title}</h3>
+                                            ${uploader ? `<p class="text-indigo-600 text-sm font-medium mb-2">by ${uploader}</p>` : ''}
+                                            <p class="text-gray-600 text-sm mb-3">${video.description || 'No description'}</p>
+                                            <div class="flex items-center space-x-4 text-xs text-gray-500">
+                                                <span class="flex items-center">
+                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                                    </svg>
+                                                    ${new Date(video.created_at).toLocaleString()}
+                                                </span>
+                                                ${duration ? `<span class="flex items-center">
+                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                    </svg>
+                                                    ${duration}
+                                                </span>` : ''}
+                                                ${viewCount ? `<span class="flex items-center">
+                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                                    </svg>
+                                                    ${viewCount}
+                                                </span>` : ''}
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center space-x-3">
+                                            <span class="px-3 py-1 rounded-full text-xs font-medium ${statusColor}">${video.status}</span>
+                                            <button onclick="deleteVideo('${video.id}')" class="text-red-600 hover:text-red-800 text-sm font-medium hover:bg-red-50 px-2 py-1 rounded transition-colors duration-200">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            videosList.innerHTML += videoCard;
+
+                            // Add to transcript selector
+                            const option = document.createElement('option');
+                            option.value = video.id;
+                            option.textContent = video.title;
+                            transcriptVideoId.appendChild(option);
+                        });
+                    }
+                } else {
+                    videosList.innerHTML = '<p class="text-red-500 text-center py-8">Error loading videos</p>';
+                }
+            } catch (error) {
+                videosList.innerHTML = '<p class="text-red-500 text-center py-8">Error loading videos</p>';
+            }
+        }
+
+        // Get status color
+        function getStatusColor(status) {
+            switch (status) {
+                case 'completed': return 'bg-green-100 text-green-800';
+                case 'failed': return 'bg-red-100 text-red-800';
+                case 'transcribing': return 'bg-yellow-100 text-yellow-800';
+                case 'pending': return 'bg-gray-100 text-gray-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        // Format duration from seconds to MM:SS or HH:MM:SS
+        function formatDuration(seconds) {
+            if (!seconds) return '';
+            
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            if (hours > 0) {
+                return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            } else {
+                return `${minutes}:${secs.toString().padStart(2, '0')}`;
+            }
+        }
+
+        // Format view count with K, M, B suffixes
+        function formatViewCount(views) {
+            if (!views) return '';
+            
+            if (views >= 1000000000) {
+                return (views / 1000000000).toFixed(1) + 'B';
+            } else if (views >= 1000000) {
+                return (views / 1000000).toFixed(1) + 'M';
+            } else if (views >= 1000) {
+                return (views / 1000).toFixed(1) + 'K';
+            } else {
+                return views.toString();
+            }
+        }
+
+        // Delete video
+        async function deleteVideo(videoId) {
+            if (!confirm('Are you sure you want to delete this video and its transcript?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/videos/${videoId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    await loadVideos();
+                } else {
+                    alert('Error deleting video');
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // Load transcript
+        async function loadTranscript() {
+            const videoId = document.getElementById('transcriptVideoId').value;
+            const transcriptResult = document.getElementById('transcriptResult');
+            const transcriptText = document.getElementById('transcriptText');
+            const transcriptLength = document.getElementById('transcriptLength');
+
+            if (!videoId) {
+                transcriptResult.classList.add('hidden');
+                document.getElementById('summaryResult').classList.add('hidden');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/videos/${videoId}/transcript`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    transcriptText.textContent = data.transcript;
+                    transcriptLength.textContent = data.length.toLocaleString();
+                    transcriptResult.classList.remove('hidden');
+                    // Hide any existing summary
+                    document.getElementById('summaryResult').classList.add('hidden');
+                } else {
+                    alert(`Error loading transcript: ${data.detail}`);
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // Summarize transcript
+        async function summarizeTranscript() {
+            const videoId = document.getElementById('transcriptVideoId').value;
+            const summaryStyle = document.getElementById('summaryStyle').value;
+            const summaryResult = document.getElementById('summaryResult');
+            const summaryText = document.getElementById('summaryText');
+            const summaryWordCount = document.getElementById('summaryWordCount');
+            const summaryStyleLabel = document.getElementById('summaryStyleLabel');
+            const summaryCacheInfo = document.getElementById('summaryCacheInfo');
+
+            if (!videoId) {
+                alert('Please select a video first');
+                return;
+            }
+
+            try {
+                // Show loading state
+                summaryText.textContent = '🤖 Generating summary with Gemini...';
+                summaryResult.classList.remove('hidden');
+
+                const response = await fetch(`${API_BASE}/summarize`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        video_id: videoId,
+                        style: summaryStyle
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    summaryText.textContent = data.summary;
+                    summaryWordCount.textContent = `${data.word_count.toLocaleString()} words`;
+                    
+                    // Update style label
+                    const styleLabels = {
+                        'comprehensive': '📋 Comprehensive',
+                        'bullet': '📝 Bullet Points', 
+                        'insights': '💡 Key Insights',
+                        'timeline': '⏰ Timeline',
+                        'qa': '❓ Q&A Format',
+                        'brief': '⚡ Brief'
+                    };
+                    summaryStyleLabel.textContent = styleLabels[summaryStyle] || summaryStyle;
+                    
+                    // Show cache info
+                    summaryCacheInfo.textContent = data.cached ? 
+                        '📦 Loaded from cache' : '🆕 Generated fresh summary';
+                        
+                } else {
+                    summaryText.textContent = `Error: ${data.detail}`;
+                    summaryWordCount.textContent = '0 words';
+                    summaryStyleLabel.textContent = '';
+                    summaryCacheInfo.textContent = '';
+                }
+            } catch (error) {
+                summaryText.textContent = `Error: ${error.message}`;
+                summaryWordCount.textContent = '0 words';
+                summaryStyleLabel.textContent = '';
+                summaryCacheInfo.textContent = '';
+            }
+        }
+
+        // Load videos on page load
+        document.addEventListener('DOMContentLoaded', loadVideos);
+    </script>
+</body>
+</html>

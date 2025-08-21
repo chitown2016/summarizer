@@ -1,0 +1,27 @@
+# Core web framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# YouTube transcript extraction
+youtube-transcript-api==1.2.2
+yt-dlp==2023.12.30
+
+# AI/ML for summarization
+transformers==4.36.2
+torch==2.1.2
+
+# Gemini AI integration
+langchain
+langchain_google_genai
+google-generativeai
+
+# Utilities
+python-dotenv==1.0.0
+requests==2.31.0
+pydantic==2.5.0
+
+# Development
+pytest==7.4.3
+black==23.11.0
+flake8==6.1.0

@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "youtube-summarizer"
+version = "1.0.0"
+description = "A web application that downloads YouTube videos, transcribes them, generates summaries, and allows you to chat with the video content using AI."
+authors = [
+    {name = "YouTube Summarizer Team"}
+]
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "fastapi==0.104.1",
+    "uvicorn[standard]==0.24.0",
+    "python-multipart==0.0.6",
+    "yt-dlp==2023.12.30",
+    "pytube==15.0.0",
+    "openai-whisper==20231117",
+    "ffmpeg-python==0.2.0",
+    "torch==2.1.1",
+    "transformers==4.41.0",
+    "sentence-transformers==5.1.0",
+    "accelerate==0.25.0",
+
+    "chromadb==0.4.22",
+    "faiss-cpu==1.7.4",
+    "langchain==0.1.0",
+    "langchain-community==0.0.10",
+    "langchain-openai==0.0.5",
+    "nltk==3.8.1",
+    "spacy==3.7.2",
+    "python-dotenv==1.0.0",
+    "requests==2.31.0",
+    "tqdm==4.66.1",
+    "pydantic==2.5.0",
+    "youtube-transcript-api==0.6.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==7.4.3",
+    "black==23.11.0",
+    "flake8==6.1.0",
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

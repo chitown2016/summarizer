@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Main App Auth Test</title>
+</head>
+<body>
+    <h1>Main App Authentication Test (Port 3000)</h1>
+    <button onclick="checkToken()">Check Token</button>
+    <button onclick="testLogin()">Test Login</button>
+    <button onclick="testSummarization()">Test Summarization</button>
+    <div id="result"></div>
+
+    <script>
+        function checkToken() {
+            const token = localStorage.getItem('authToken');
+            const resultDiv = document.getElementById('result');
+            
+            if (token) {
+                resultDiv.innerHTML = `
+                    <h3>✅ Token Found!</h3>
+                    <p>Token: ${token.substring(0, 20)}...</p>
+                    <p>Length: ${token.length}</p>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <h3>❌ No Token Found</h3>
+                    <p>No token in localStorage for this port</p>
+                `;
+            }
+        }
+        
+        async function testLogin() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing login...';
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'testpassword123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Store the token
+                    localStorage.setItem('authToken', data.access_token);
+                    resultDiv.innerHTML = `
+                        <h3>✅ Login Successful!</h3>
+                        <p>Token: ${data.access_token.substring(0, 20)}...</p>
+                        <p>User: ${data.user.email}</p>
+                        <p>Token stored in localStorage for this port</p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <h3>❌ Login Failed</h3>
+                        <p>Status: ${response.status}</p>
+                        <p>Error: ${data.detail}</p>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h3>❌ Network Error</h3>
+                    <p>Error: ${error.message}</p>
+                `;
+            }
+        }
+        
+        async function testSummarization() {
+            const token = localStorage.getItem('authToken');
+            const resultDiv = document.getElementById('result');
+            
+            if (!token) {
+                resultDiv.innerHTML = '<h3>❌ No token found. Please login first.</h3>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<h3>Testing summarization...</h3>';
+            
+            try {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                };
+                
+                const response = await fetch('http://localhost:8000/api/summarize', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        video_id: "4f35a2bc-e7e7-4ff6-8134-d58c3a845860",
+                        style: "comprehensive"
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <h3>✅ Summarization Successful!</h3>
+                        <p>Status: ${response.status}</p>
+                        <p>Summary length: ${data.summary ? data.summary.length : 0} characters</p>
+                        <p>API Key Source: ${data.api_key_source}</p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <h3>❌ Summarization Failed</h3>
+                        <p>Status: ${response.status}</p>
+                        <p>Error: ${data.detail}</p>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h3>❌ Network Error</h3>
+                    <p>Error: ${error.message}</p>
+                `;
+            }
+        }
+        
+        // Check token on page load
+        window.addEventListener('load', checkToken);
+    </script>
+</body>
+</html>

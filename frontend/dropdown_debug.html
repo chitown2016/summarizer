@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dropdown Debug Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+        }
+        .test-container {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 5px;
+            color: white;
+            margin: 10px 0;
+        }
+        option {
+            background: #333;
+            color: white;
+        }
+        .debug-info {
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dropdown Debug Test</h1>
+    
+    <div class="test-container">
+        <h2>Test 1: Simple Dropdown</h2>
+        <select id="simpleDropdown">
+            <option value="">Select a provider</option>
+            <option value="google">Google Gemini</option>
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic Claude</option>
+        </select>
+        <div class="debug-info">
+            Options count: <span id="simpleCount">-</span><br>
+            Selected value: <span id="simpleValue">-</span>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>Test 2: Styled Dropdown (like the original)</h2>
+        <select id="styledDropdown" class="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-xl text-white">
+            <option value="">Select a provider</option>
+            <option value="google">Google Gemini</option>
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic Claude</option>
+        </select>
+        <div class="debug-info">
+            Options count: <span id="styledCount">-</span><br>
+            Selected value: <span id="styledValue">-</span>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>Test 3: Dynamic Dropdown</h2>
+        <select id="dynamicDropdown">
+            <option value="">Loading...</option>
+        </select>
+        <button onclick="populateDropdown()">Populate Dropdown</button>
+        <div class="debug-info">
+            Options count: <span id="dynamicCount">-</span><br>
+            Selected value: <span id="dynamicValue">-</span>
+        </div>
+    </div>
+
+    <script>
+        // Update debug info
+        function updateDebugInfo() {
+            // Simple dropdown
+            const simpleSelect = document.getElementById('simpleDropdown');
+            document.getElementById('simpleCount').textContent = simpleSelect.options.length;
+            document.getElementById('simpleValue').textContent = simpleSelect.value;
+            
+            // Styled dropdown
+            const styledSelect = document.getElementById('styledDropdown');
+            document.getElementById('styledCount').textContent = styledSelect.options.length;
+            document.getElementById('styledValue').textContent = styledSelect.value;
+            
+            // Dynamic dropdown
+            const dynamicSelect = document.getElementById('dynamicDropdown');
+            document.getElementById('dynamicCount').textContent = dynamicSelect.options.length;
+            document.getElementById('dynamicValue').textContent = dynamicSelect.value;
+        }
+
+        // Populate dynamic dropdown
+        function populateDropdown() {
+            const select = document.getElementById('dynamicDropdown');
+            select.innerHTML = `
+                <option value="">Select a provider</option>
+                <option value="google">Google Gemini</option>
+                <option value="openai">OpenAI</option>
+                <option value="anthropic">Anthropic Claude</option>
+            `;
+            updateDebugInfo();
+        }
+
+        // Add event listeners
+        document.getElementById('simpleDropdown').addEventListener('change', updateDebugInfo);
+        document.getElementById('styledDropdown').addEventListener('change', updateDebugInfo);
+        document.getElementById('dynamicDropdown').addEventListener('change', updateDebugInfo);
+
+        // Initial update
+        updateDebugInfo();
+        
+        // Log dropdown state
+        console.log('Dropdown debug page loaded');
+        console.log('Simple dropdown options:', document.getElementById('simpleDropdown').options.length);
+        console.log('Styled dropdown options:', document.getElementById('styledDropdown').options.length);
+    </script>
+</body>
+</html>

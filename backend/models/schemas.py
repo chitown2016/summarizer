@@ -24,6 +24,11 @@ class VideoInfo(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+class UserVideoInfo(VideoInfo):
+    """Video info with user-specific data"""
+    user_requested_at: datetime
+    user_id: str
+
 class VideoProcessResponse(BaseModel):
     video_id: str
     status: VideoStatus
@@ -58,6 +63,10 @@ class ChatResponse(BaseModel):
 
 class VideoListResponse(BaseModel):
     videos: List[VideoInfo]
+    total: int
+
+class UserVideoListResponse(BaseModel):
+    videos: List[UserVideoInfo]
     total: int
 
 class ErrorResponse(BaseModel):

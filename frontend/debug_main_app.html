@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Main App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-8">Debug Main Application</h1>
+        
+        <!-- Authentication Status -->
+        <div class="bg-white p-6 rounded-lg shadow mb-6">
+            <h2 class="text-xl font-semibold mb-4">Authentication Status</h2>
+            <button onclick="checkAuth()" class="bg-blue-500 text-white px-4 py-2 rounded mb-4">Check Auth Status</button>
+            <button onclick="refreshToken()" class="bg-orange-500 text-white px-4 py-2 rounded mb-4 ml-2">Refresh Token</button>
+            <div id="authStatus" class="text-sm"></div>
+        </div>
+        
+        <!-- Test Summarization -->
+        <div class="bg-white p-6 rounded-lg shadow mb-6">
+            <h2 class="text-xl font-semibold mb-4">Test Summarization</h2>
+            <button onclick="testSummarization()" class="bg-green-500 text-white px-4 py-2 rounded mb-4">Test Summarization</button>
+            <div id="summaryResult" class="text-sm"></div>
+        </div>
+        
+        <!-- Debug Info -->
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h2 class="text-xl font-semibold mb-4">Debug Info</h2>
+            <button onclick="showDebugInfo()" class="bg-purple-500 text-white px-4 py-2 rounded mb-4">Show Debug Info</button>
+            <div id="debugInfo" class="text-sm font-mono bg-gray-100 p-4 rounded"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        
+        function checkAuth() {
+            const token = localStorage.getItem('authToken');
+            const userData = localStorage.getItem('user');
+            const statusDiv = document.getElementById('authStatus');
+            
+            let html = '<div class="space-y-2">';
+            
+            if (token) {
+                html += `<div class="text-green-600">✅ Token found: ${token.substring(0, 20)}...</div>`;
+                html += `<div class="text-gray-600">Token length: ${token.length}</div>`;
+            } else {
+                html += '<div class="text-red-600">❌ No token found</div>';
+            }
+            
+            if (userData) {
+                try {
+                    const user = JSON.parse(userData);
+                    html += `<div class="text-green-600">✅ User data found: ${user.email}</div>`;
+                } catch (e) {
+                    html += '<div class="text-red-600">❌ Invalid user data</div>';
+                }
+            } else {
+                html += '<div class="text-red-600">❌ No user data found</div>';
+            }
+            
+            html += '</div>';
+            statusDiv.innerHTML = html;
+        }
+        
+        async function refreshToken() {
+            const statusDiv = document.getElementById('authStatus');
+            statusDiv.innerHTML = '<div class="text-blue-600">🔄 Refreshing token...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'testpassword123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Store the fresh token
+                    localStorage.setItem('authToken', data.access_token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    statusDiv.innerHTML = `
+                        <div class="text-green-600">✅ Token refreshed successfully!</div>
+                        <div class="text-gray-600">New token: ${data.access_token.substring(0, 20)}...</div>
+                        <div class="text-gray-600">User: ${data.user.email}</div>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `
+                        <div class="text-red-600">❌ Token refresh failed</div>
+                        <div class="text-gray-600">Error: ${data.detail}</div>
+                    `;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="text-red-600">❌ Network Error</div>
+                    <div class="text-gray-600">Error: ${error.message}</div>
+                `;
+            }
+        }
+        
+        async function testSummarization() {
+            const token = localStorage.getItem('authToken');
+            const resultDiv = document.getElementById('summaryResult');
+            
+            if (!token) {
+                resultDiv.innerHTML = '<div class="text-red-600">❌ No token found</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="text-blue-600">🔄 Testing summarization...</div>';
+            
+            try {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                };
+                
+                console.log('Sending request with headers:', headers);
+                
+                const response = await fetch(`${API_BASE}/summarize`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        video_id: "4f35a2bc-e7e7-4ff6-8134-d58c3a845860",
+                        style: "comprehensive"
+                    })
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="text-green-600">✅ Summarization Successful!</div>
+                        <div class="text-gray-600">Status: ${response.status}</div>
+                        <div class="text-gray-600">Summary length: ${data.summary ? data.summary.length : 0} characters</div>
+                        <div class="text-gray-600">API Key Source: ${data.api_key_source}</div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="text-red-600">❌ Summarization Failed</div>
+                        <div class="text-gray-600">Status: ${response.status}</div>
+                        <div class="text-gray-600">Error: ${data.detail}</div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `
+                    <div class="text-red-600">❌ Network Error</div>
+                    <div class="text-gray-600">Error: ${error.message}</div>
+                `;
+            }
+        }
+        
+        function showDebugInfo() {
+            const debugDiv = document.getElementById('debugInfo');
+            const token = localStorage.getItem('authToken');
+            const userData = localStorage.getItem('user');
+            
+            let info = `Token: ${token ? 'Present' : 'Missing'}\n`;
+            info += `User Data: ${userData ? 'Present' : 'Missing'}\n`;
+            info += `API Base: ${API_BASE}\n`;
+            info += `Current URL: ${window.location.href}\n`;
+            info += `User Agent: ${navigator.userAgent}\n`;
+            
+            if (token) {
+                info += `Token Length: ${token.length}\n`;
+                info += `Token Start: ${token.substring(0, 20)}...\n`;
+            }
+            
+            if (userData) {
+                try {
+                    const user = JSON.parse(userData);
+                    info += `User Email: ${user.email}\n`;
+                } catch (e) {
+                    info += `User Data Error: ${e.message}\n`;
+                }
+            }
+            
+            debugDiv.textContent = info;
+        }
+        
+        // Check auth on page load
+        window.addEventListener('load', checkAuth);
+    </script>
+</body>
+</html>

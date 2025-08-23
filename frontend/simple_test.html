@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Dropdown Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            font-family: "Inter", sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+        }
+        .test-container {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        /* Force option styling */
+        select option {
+            background-color: #333 !important;
+            color: white !important;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple Dropdown Test</h1>
+    
+    <div class="test-container">
+        <h2>Test 1: Exact same as api-keys.html</h2>
+        <label for="provider" class="block text-sm font-medium text-white mb-2">Provider</label>
+        <select id="provider" name="provider" required 
+                class="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-xl text-white input-focus focus:outline-none">
+            <option value="">Select a provider</option>
+            <option value="google">Google Gemini</option>
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic Claude</option>
+        </select>
+        <p class="mt-2 text-sm">Selected: <span id="selected1">-</span></p>
+    </div>
+
+    <div class="test-container">
+        <h2>Test 2: Without Tailwind classes</h2>
+        <label for="provider2" class="block text-sm font-medium text-white mb-2">Provider</label>
+        <select id="provider2" name="provider2" required style="width: 100%; padding: 12px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; color: white;">
+            <option value="">Select a provider</option>
+            <option value="google">Google Gemini</option>
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic Claude</option>
+        </select>
+        <p class="mt-2 text-sm">Selected: <span id="selected2">-</span></p>
+    </div>
+
+    <div class="test-container">
+        <h2>Test 3: Simple styling</h2>
+        <label for="provider3" class="block text-sm font-medium text-white mb-2">Provider</label>
+        <select id="provider3" name="provider3" required style="width: 100%; padding: 10px; background: #333; border: 1px solid #666; border-radius: 5px; color: white;">
+            <option value="">Select a provider</option>
+            <option value="google">Google Gemini</option>
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic Claude</option>
+        </select>
+        <p class="mt-2 text-sm">Selected: <span id="selected3">-</span></p>
+    </div>
+
+    <script>
+        // Add event listeners
+        document.getElementById('provider').addEventListener('change', function() {
+            document.getElementById('selected1').textContent = this.value;
+        });
+        
+        document.getElementById('provider2').addEventListener('change', function() {
+            document.getElementById('selected2').textContent = this.value;
+        });
+        
+        document.getElementById('provider3').addEventListener('change', function() {
+            document.getElementById('selected3').textContent = this.value;
+        });
+
+        // Log the options
+        console.log('Provider 1 options:', document.getElementById('provider').options.length);
+        console.log('Provider 2 options:', document.getElementById('provider2').options.length);
+        console.log('Provider 3 options:', document.getElementById('provider3').options.length);
+        
+        // Check if options are visible
+        setTimeout(() => {
+            const select1 = document.getElementById('provider');
+            console.log('Select 1 options visible:', select1.options.length > 0);
+            for (let i = 0; i < select1.options.length; i++) {
+                console.log(`Option ${i}:`, select1.options[i].text, select1.options[i].value);
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

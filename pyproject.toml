@@ -45,7 +45,7 @@ dependencies = [
     "requests==2.31.0",
     "tqdm==4.66.1",
     "pydantic==2.5.0",
-    "youtube-transcript-api==0.6.1",
+    "youtube-transcript-api==1.2.2",
 ]
 
 [project.optional-dependencies]

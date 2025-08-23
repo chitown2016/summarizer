@@ -107,7 +107,81 @@
 <body class="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 min-h-screen">
     <!-- Header Section -->
     <div class="gradient-bg text-white">
-        <div class="container mx-auto px-6 py-12">
+        <!-- Navigation Bar -->
+        <nav class="container mx-auto px-6 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <span class="text-xl font-bold">YouTube Summary Generator</span>
+                    </div>
+                </div>
+                
+                <!-- Authentication Section -->
+                <div id="authSection" class="flex items-center space-x-4">
+                    <!-- Login/Register buttons (shown when not logged in) -->
+                    <div id="guestButtons" class="flex items-center space-x-3">
+                        <a href="login.html" class="px-4 py-2 text-white/90 hover:text-white transition-colors">Login</a>
+                        <a href="register.html" class="px-4 py-3 bg-white/20 hover:bg-white/30 rounded-lg text-white font-medium transition-all duration-200">Sign Up</a>
+                    </div>
+                    
+                    <!-- User menu (shown when logged in) -->
+                    <div id="userMenu" class="hidden flex items-center space-x-3">
+                        <div class="relative">
+                            <button id="userMenuButton" class="flex items-center space-x-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all duration-200">
+                                <div class="w-8 h-8 bg-white/30 rounded-full flex items-center justify-center">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                    </svg>
+                                </div>
+                                <span id="userName">User</span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+                            
+                            <!-- Dropdown menu -->
+                            <div id="userDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white/10 backdrop-blur-sm rounded-lg shadow-lg border border-white/20">
+                                <div class="py-2">
+                                    <a href="#" id="profileLink" class="block px-4 py-2 text-white/90 hover:text-white hover:bg-white/10 transition-colors">
+                                        <div class="flex items-center space-x-2">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                            </svg>
+                                            <span>Profile</span>
+                                        </div>
+                                    </a>
+                                    <a href="#" id="apiKeysLink" class="block px-4 py-2 text-white/90 hover:text-white hover:bg-white/10 transition-colors">
+                                        <div class="flex items-center space-x-2">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+                                            </svg>
+                                            <span>API Keys</span>
+                                        </div>
+                                    </a>
+                                    <hr class="border-white/20 my-1">
+                                    <button id="logoutButton" class="w-full text-left px-4 py-2 text-white/90 hover:text-white hover:bg-white/10 transition-colors">
+                                        <div class="flex items-center space-x-2">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                            </svg>
+                                            <span>Logout</span>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+        
+        <!-- Page Header -->
+        <div class="container mx-auto px-6 py-8">
             <div class="text-center animate-fade-in">
                 <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-6">
                     <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
@@ -276,7 +350,18 @@
             const transcriptVideoId = document.getElementById('transcriptVideoId');
 
             try {
-                const response = await fetch(`${API_BASE}/videos`);
+                // Get authentication token
+                const token = localStorage.getItem('authToken');
+                const headers = {
+                    'Content-Type': 'application/json',
+                };
+                
+                // Add authorization header if token exists
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const response = await fetch(`${API_BASE}/videos`, { headers });
                 const data = await response.json();
 
                 if (response.ok) {
@@ -310,6 +395,7 @@
                         
                         sortedVideos.forEach(video => {
                             const statusColor = getStatusColor(video.status);
+                            const statusText = getStatusText(video.status);
                             const duration = video.duration ? formatDuration(video.duration) : '';
                             const uploader = video.uploader || '';
                             const viewCount = video.view_count ? formatViewCount(video.view_count) : '';
@@ -344,7 +430,7 @@
                                             </div>
                                         </div>
                                         <div class="flex items-center space-x-3">
-                                            <span class="px-3 py-1 rounded-full text-xs font-medium ${statusColor}">${video.status}</span>
+                                            <span class="px-3 py-1 rounded-full text-xs font-medium ${statusColor}">${statusText}</span>
                                             <button onclick="deleteVideo('${video.id}')" class="text-red-600 hover:text-red-800 text-sm font-medium hover:bg-red-50 px-2 py-1 rounded transition-colors duration-200">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -379,6 +465,17 @@
                 case 'transcribing': return 'bg-yellow-100 text-yellow-800';
                 case 'pending': return 'bg-gray-100 text-gray-800';
                 default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        // Get status display text
+        function getStatusText(status) {
+            switch (status) {
+                case 'completed': return '✅ Completed';
+                case 'failed': return '❌ Failed - No subtitles available';
+                case 'transcribing': return '⏳ Processing...';
+                case 'pending': return '⏳ Pending...';
+                default: return status;
             }
         }
 
@@ -419,8 +516,20 @@
             }
 
             try {
+                // Get authentication token
+                const token = localStorage.getItem('authToken');
+                const headers = {
+                    'Content-Type': 'application/json',
+                };
+                
+                // Add authorization header if token exists
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
                 const response = await fetch(`${API_BASE}/videos/${videoId}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: headers
                 });
 
                 if (response.ok) {
@@ -447,7 +556,18 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE}/videos/${videoId}/transcript`);
+                // Get authentication token
+                const token = localStorage.getItem('authToken');
+                const headers = {
+                    'Content-Type': 'application/json',
+                };
+                
+                // Add authorization header if token exists
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const response = await fetch(`${API_BASE}/videos/${videoId}/transcript`, { headers });
                 const data = await response.json();
 
                 if (response.ok) {
@@ -457,10 +577,18 @@
                     // Hide any existing summary
                     document.getElementById('summaryResult').classList.add('hidden');
                 } else {
-                    alert(`Error loading transcript: ${data.detail}`);
+                    // Show error message in transcript area
+                    transcriptText.textContent = `Error loading transcript: ${data.detail}\n\nThis could be because:\n- The video doesn't have subtitles/closed captions\n- The subtitles are not publicly available\n- The video is private or restricted\n\nPlease try a different video with available subtitles.`;
+                    transcriptLength.textContent = '0';
+                    transcriptResult.classList.remove('hidden');
+                    document.getElementById('summaryResult').classList.add('hidden');
                 }
             } catch (error) {
-                alert(`Error: ${error.message}`);
+                // Show error message in transcript area
+                transcriptText.textContent = `Network error: ${error.message}\n\nPlease check your connection and try again.`;
+                transcriptLength.textContent = '0';
+                transcriptResult.classList.remove('hidden');
+                document.getElementById('summaryResult').classList.add('hidden');
             }
         }
 
@@ -484,11 +612,20 @@
                 summaryText.textContent = '🤖 Generating summary with Gemini...';
                 summaryResult.classList.remove('hidden');
 
+                // Get authentication token
+                const token = localStorage.getItem('authToken');
+                const headers = {
+                    'Content-Type': 'application/json',
+                };
+                
+                // Add authorization header if token exists
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
                 const response = await fetch(`${API_BASE}/summarize`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: headers,
                     body: JSON.stringify({
                         video_id: videoId,
                         style: summaryStyle
@@ -532,6 +669,124 @@
 
         // Load videos on page load
         document.addEventListener('DOMContentLoaded', loadVideos);
+
+        // Authentication functionality
+        let currentUser = null;
+
+        // Check authentication status on page load
+        window.addEventListener('load', function() {
+            checkAuthStatus();
+        });
+
+        // Check if user is authenticated
+        function checkAuthStatus() {
+            const token = localStorage.getItem('authToken');
+            const userData = localStorage.getItem('user');
+            
+            if (token && userData) {
+                try {
+                    currentUser = JSON.parse(userData);
+                    showAuthenticatedUser();
+                } catch (error) {
+                    console.error('Error parsing user data:', error);
+                    logout();
+                }
+            } else {
+                showGuestUser();
+            }
+        }
+
+        // Show authenticated user interface
+        function showAuthenticatedUser() {
+            document.getElementById('guestButtons').classList.add('hidden');
+            document.getElementById('userMenu').classList.remove('hidden');
+            
+            // Update user name
+            const userName = currentUser.full_name || currentUser.username || 'User';
+            document.getElementById('userName').textContent = userName;
+        }
+
+        // Show guest user interface
+        function showGuestUser() {
+            document.getElementById('guestButtons').classList.remove('hidden');
+            document.getElementById('userMenu').classList.add('hidden');
+            currentUser = null;
+        }
+
+        // User menu toggle
+        document.getElementById('userMenuButton').addEventListener('click', function() {
+            const dropdown = document.getElementById('userDropdown');
+            dropdown.classList.toggle('hidden');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const userMenu = document.getElementById('userMenu');
+            const dropdown = document.getElementById('userDropdown');
+            
+            if (!userMenu.contains(event.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        // Logout functionality
+        document.getElementById('logoutButton').addEventListener('click', function() {
+            logout();
+        });
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('user');
+            currentUser = null;
+            showGuestUser();
+            
+            // Close dropdown
+            document.getElementById('userDropdown').classList.add('hidden');
+            
+            // Show logout message
+            showMessage('Logged out successfully', 'success');
+        }
+
+        // Profile link
+        document.getElementById('profileLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            // TODO: Implement profile page
+            alert('Profile page coming soon!');
+        });
+
+        // API Keys link
+        document.getElementById('apiKeysLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            // TODO: Implement API keys management page
+            window.location.href = 'api-keys.html';
+        });
+
+        // Message display function
+        function showMessage(message, type) {
+            // Create message element if it doesn't exist
+            let messageContainer = document.getElementById('messageContainer');
+            if (!messageContainer) {
+                messageContainer = document.createElement('div');
+                messageContainer.id = 'messageContainer';
+                messageContainer.className = 'fixed top-4 right-4 z-50';
+                document.body.appendChild(messageContainer);
+            }
+            
+            const messageElement = document.createElement('div');
+            messageElement.className = `p-4 rounded-lg shadow-lg mb-2 transition-all duration-300 ${
+                type === 'success' 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-red-500 text-white'
+            }`;
+            messageElement.textContent = message;
+            
+            messageContainer.appendChild(messageElement);
+            
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                messageElement.remove();
+            }, 3000);
+        }
     </script>
 </body>
 </html>

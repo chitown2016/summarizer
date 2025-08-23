@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import API routes
-from backend.api import video, summary
+from backend.api import video, summary, auth
 
 # Create FastAPI app
 app = FastAPI(
@@ -21,7 +21,12 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=[
+        "http://localhost:3000", 
+        "http://127.0.0.1:3000",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -30,6 +35,7 @@ app.add_middleware(
 # Include API routes
 app.include_router(video.router, prefix="/api", tags=["video"])
 app.include_router(summary.router, prefix="/api", tags=["summary"])
+app.include_router(auth.router, prefix="/api", tags=["authentication"])
 
 # Health check endpoint
 @app.get("/")
@@ -51,7 +57,7 @@ async def get_status():
         # Check if summarizer is loaded
         from backend.api.summary import get_summarizer
         summarizer = get_summarizer()
-        summarizer_status = "ready" if summarizer and summarizer.summarizer else "loading"
+        summarizer_status = "ready" if summarizer and summarizer.chat else "loading"
     except Exception:
         summarizer_status = "error"
     

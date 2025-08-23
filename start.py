@@ -111,7 +111,7 @@ def wait_for_backend():
         except:
             pass
         time.sleep(2)
-        print(f"⏳ Waiting for backend... (attempt {attempt + 1}/{max_attempts})")
+        print("⏳ Waiting for backend...")
     
     print("❌ Backend failed to start")
     return False

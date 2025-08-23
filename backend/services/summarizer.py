@@ -9,18 +9,23 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import find_dotenv, load_dotenv
 
+from backend.services.auth_service import auth_service
+
 logger = logging.getLogger(__name__)
 
 class Summarizer:
-    def __init__(self):
+    def __init__(self, user_id: Optional[str] = None):
         self.cache_dir = Path("data/summaries")
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         
         # Load environment variables
         load_dotenv(find_dotenv())
         
-        # Initialize Gemini
-        self.chat = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
+        # Store user_id for API key lookup
+        self.user_id = user_id
+        
+        # Initialize Gemini with API key
+        self.chat = self._initialize_gemini()
         
         # Create different prompt templates for different styles
         self.prompts = {
@@ -33,6 +38,65 @@ class Summarizer:
         }
         
         logger.info("Summarizer initialized with Gemini 2.5 Flash")
+
+    def _initialize_gemini(self) -> Optional[ChatGoogleGenerativeAI]:
+        """Initialize Gemini with API key from database or environment"""
+        api_key = self._get_api_key()
+        
+        if not api_key:
+            logger.warning("No Google API key found. LLM features will be disabled.")
+            return None
+        
+        try:
+            # Set the API key for the session
+            os.environ["GOOGLE_API_KEY"] = api_key
+            chat = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
+            logger.info("Gemini initialized successfully with API key")
+            return chat
+        except Exception as e:
+            logger.error(f"Failed to initialize Gemini: {e}")
+            return None
+
+    def _get_api_key(self) -> Optional[str]:
+        """Get API key from database only - no environment variable fallback"""
+        
+        # Only get from database if user_id is provided
+        if self.user_id:
+            try:
+                # Get user's default Google API key
+                api_key_obj = auth_service.get_user_default_api_key(self.user_id, "google")
+                if api_key_obj and api_key_obj.api_key:
+                    logger.info("Using API key from database")
+                    return api_key_obj.api_key
+            except Exception as e:
+                logger.warning(f"Failed to get API key from database: {e}")
+        
+        logger.warning("No API key found in database - user must provide their own API key")
+        return None
+
+
+
+    def set_user_id(self, user_id: str):
+        """Set user ID for API key lookup"""
+        self.user_id = user_id
+        # Reinitialize with new user context
+        self.chat = self._initialize_gemini()
+
+    def has_api_key(self) -> bool:
+        """Check if API key is available"""
+        return self._get_api_key() is not None
+
+    def get_api_key_source(self) -> str:
+        """Get the source of the current API key"""
+        if self.user_id:
+            try:
+                api_key_obj = auth_service.get_user_default_api_key(self.user_id, "google")
+                if api_key_obj:
+                    return "database"
+            except Exception:
+                pass
+        
+        return "none"
 
     def _create_comprehensive_prompt(self):
         return ChatPromptTemplate.from_messages([
@@ -116,6 +180,16 @@ class Summarizer:
         """
         if not text.strip():
             logger.warning("Empty text provided for summarization")
+            return None
+
+        # Check if API key is available
+        if not self.has_api_key():
+            logger.error("No API key available. Cannot generate summary.")
+            return None
+
+        # Check if Gemini is initialized
+        if not self.chat:
+            logger.error("Gemini not initialized. Cannot generate summary.")
             return None
 
         # Validate style

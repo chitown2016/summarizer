@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
 
 from backend.services.summarizer import Summarizer
 from backend.services.video_processor import VideoProcessor
+from backend.middleware.auth import get_current_active_user
+from backend.models.auth import User
 
 router = APIRouter()
 
@@ -11,11 +13,14 @@ router = APIRouter()
 summarizer = None
 video_processor = VideoProcessor()
 
-def get_summarizer():
+def get_summarizer(user_id: Optional[str] = None):
     """Lazy load the summarizer to avoid blocking startup"""
     global summarizer
     if summarizer is None:
-        summarizer = Summarizer()
+        summarizer = Summarizer(user_id=user_id)
+    elif user_id and summarizer.user_id != user_id:
+        # Update user_id if different
+        summarizer.set_user_id(user_id)
     return summarizer
 
 class SummaryRequest(BaseModel):
@@ -29,9 +34,18 @@ class SummaryResponse(BaseModel):
     original_length: int
     style: str
     cached: bool = False
+    api_key_source: Optional[str] = None
+
+class APIKeyStatusResponse(BaseModel):
+    has_api_key: bool
+    api_key_source: str
+    message: str
 
 @router.post("/summarize", response_model=SummaryResponse)
-async def summarize_video(request: SummaryRequest):
+async def summarize_video(
+    request: SummaryRequest,
+    current_user: User = Depends(get_current_active_user)
+):
     """
     Generate a summary for a video transcript using Gemini
     """
@@ -41,8 +55,17 @@ async def summarize_video(request: SummaryRequest):
         if not transcript:
             raise HTTPException(status_code=404, detail="Transcript not found")
         
+        # Get summarizer with user context
+        summarizer_instance = get_summarizer(current_user.id)
+        
+        # Check API key availability
+        if not summarizer_instance.has_api_key():
+            raise HTTPException(
+                status_code=400, 
+                detail="No API key available. Please add a Google API key in your profile settings."
+            )
+        
         # Check if summary is cached first
-        summarizer_instance = get_summarizer()
         cache_key = summarizer_instance._get_cache_key(transcript, request.style)
         cached_summary = summarizer_instance._load_from_cache(cache_key)
         is_cached = cached_summary is not None
@@ -58,7 +81,8 @@ async def summarize_video(request: SummaryRequest):
             word_count=len(summary.split()),
             original_length=len(transcript),
             style=request.style,
-            cached=is_cached
+            cached=is_cached,
+            api_key_source=summarizer_instance.get_api_key_source()
         )
         
     except HTTPException:
@@ -66,20 +90,60 @@ async def summarize_video(request: SummaryRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating summary: {str(e)}")
 
+@router.get("/api-key-status", response_model=APIKeyStatusResponse)
+async def get_api_key_status(current_user: User = Depends(get_current_active_user)):
+    """Check API key availability for the current user"""
+    try:
+        summarizer_instance = get_summarizer(current_user.id)
+        has_key = summarizer_instance.has_api_key()
+        source = summarizer_instance.get_api_key_source()
+        
+        if has_key:
+            message = f"API key available from {source}"
+        else:
+            message = "No API key found. Please add a Google API key in your profile settings."
+        
+        return APIKeyStatusResponse(
+            has_api_key=has_key,
+            api_key_source=source,
+            message=message
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error checking API key status: {str(e)}")
+
+@router.post("/migrate-env-key")
+async def migrate_environment_key(current_user: User = Depends(get_current_active_user)):
+    """Migrate environment variable API key to user's database"""
+    try:
+        summarizer_instance = get_summarizer(current_user.id)
+        success = summarizer_instance._migrate_env_key_to_db(current_user.id)
+        
+        if success:
+            return {"message": "Successfully migrated environment API key to database"}
+        else:
+            raise HTTPException(
+                status_code=400, 
+                detail="No environment API key found or migration failed"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error migrating API key: {str(e)}")
+
 @router.get("/styles")
-async def get_summary_styles():
+async def get_summary_styles(current_user: User = Depends(get_current_active_user)):
     """Get available summary styles"""
     try:
-        styles = get_summarizer().get_available_styles()
+        styles = get_summarizer(current_user.id).get_available_styles()
         return {"styles": styles}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting styles: {str(e)}")
 
 @router.get("/cache-stats")
-async def get_cache_stats():
+async def get_cache_stats(current_user: User = Depends(get_current_active_user)):
     """Get cache statistics"""
     try:
-        stats = get_summarizer().get_cache_stats()
+        stats = get_summarizer(current_user.id).get_cache_stats()
         return stats
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting cache stats: {str(e)}")

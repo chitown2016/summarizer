@@ -8,13 +8,17 @@ import torch
 
 from backend.models.schemas import ChatMessage
 from backend.services.vector_store import VectorStore
+from backend.services.auth_service import auth_service
 
 logger = logging.getLogger(__name__)
 
 class ChatService:
-    def __init__(self):
+    def __init__(self, user_id: Optional[str] = None):
         self.vector_store = VectorStore()
         self.chat_model = os.getenv("CHAT_MODEL", "mistral-7b-instruct")
+        
+        # Store user_id for API key lookup
+        self.user_id = user_id
         
         # Initialize chat model
         self._initialize_chat_model()
@@ -26,11 +30,9 @@ class ChatService:
     def _initialize_chat_model(self):
         """Initialize the chat model"""
         try:
-            # For now, we'll use a simple approach with Hugging Face models
-            # In production, you might want to use OpenAI API or other services
+            # Check if we have API keys available
+            openai_api_key = self._get_openai_api_key()
             
-            # Check if we have OpenAI API key
-            openai_api_key = os.getenv("OPENAI_API_KEY")
             if openai_api_key:
                 self.use_openai = True
                 import openai
@@ -44,6 +46,54 @@ class ChatService:
         except Exception as e:
             logger.error(f"Error initializing chat model: {e}")
             self.use_openai = False
+
+    def _get_openai_api_key(self) -> Optional[str]:
+        """Get OpenAI API key from database first, then environment variables"""
+        
+        # First, try to get from database if user_id is provided
+        if self.user_id:
+            try:
+                # Get user's default OpenAI API key
+                api_key_obj = auth_service.get_user_default_api_key(self.user_id, "openai")
+                if api_key_obj and api_key_obj.api_key:
+                    logger.info("Using OpenAI API key from database")
+                    return api_key_obj.api_key
+            except Exception as e:
+                logger.warning(f"Failed to get OpenAI API key from database: {e}")
+        
+        # Fallback to environment variable
+        env_api_key = os.getenv("OPENAI_API_KEY")
+        if env_api_key:
+            logger.info("Using OpenAI API key from environment variable")
+            return env_api_key
+        
+        logger.warning("No OpenAI API key found in database or environment")
+        return None
+
+    def set_user_id(self, user_id: str):
+        """Set user ID for API key lookup"""
+        self.user_id = user_id
+        # Reinitialize with new user context
+        self._initialize_chat_model()
+
+    def has_api_key(self) -> bool:
+        """Check if API key is available"""
+        return self._get_openai_api_key() is not None
+
+    def get_api_key_source(self) -> str:
+        """Get the source of the current API key"""
+        if self.user_id:
+            try:
+                api_key_obj = auth_service.get_user_default_api_key(self.user_id, "openai")
+                if api_key_obj:
+                    return "database"
+            except Exception:
+                pass
+        
+        if os.getenv("OPENAI_API_KEY"):
+            return "environment"
+        
+        return "none"
     
     async def chat(
         self, 

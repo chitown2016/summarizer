@@ -37,6 +37,9 @@ app.include_router(video.router, prefix="/api", tags=["video"])
 app.include_router(summary.router, prefix="/api", tags=["summary"])
 app.include_router(auth.router, prefix="/api", tags=["authentication"])
 
+# Mount static files for frontend
+app.mount('/app', StaticFiles(directory='frontend', html=True), name='frontend')
+
 # Health check endpoint
 @app.get("/")
 async def root():

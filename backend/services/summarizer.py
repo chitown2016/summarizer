@@ -60,16 +60,27 @@ class Summarizer:
     def _get_api_key(self) -> Optional[str]:
         """Get API key from database only - no environment variable fallback"""
         
+        logger.info(f"Getting API key for user_id: {self.user_id}")
+        
         # Only get from database if user_id is provided
         if self.user_id:
             try:
                 # Get user's default Google API key
-                api_key_obj = auth_service.get_user_default_api_key(self.user_id, "google")
-                if api_key_obj and api_key_obj.api_key:
+                logger.info(f"Looking up API key for user {self.user_id} and provider 'google'")
+                api_key = auth_service.get_user_default_api_key(self.user_id, "google")
+                logger.info(f"API key lookup result: {api_key[:10] + '...' if api_key else 'None'}")
+                
+                if api_key:
                     logger.info("Using API key from database")
-                    return api_key_obj.api_key
+                    return api_key
+                else:
+                    logger.warning("No API key found in database")
             except Exception as e:
                 logger.warning(f"Failed to get API key from database: {e}")
+                import traceback
+                logger.warning(f"Traceback: {traceback.format_exc()}")
+        else:
+            logger.warning("No user_id provided to summarizer")
         
         logger.warning("No API key found in database - user must provide their own API key")
         return None
@@ -90,8 +101,8 @@ class Summarizer:
         """Get the source of the current API key"""
         if self.user_id:
             try:
-                api_key_obj = auth_service.get_user_default_api_key(self.user_id, "google")
-                if api_key_obj:
+                api_key = auth_service.get_user_default_api_key(self.user_id, "google")
+                if api_key:
                     return "database"
             except Exception:
                 pass

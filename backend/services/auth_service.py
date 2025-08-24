@@ -338,27 +338,40 @@ class AuthService:
         
         return None
     
-    def get_user_default_api_key(self, user_id: str, provider: str) -> Optional[APIKey]:
-        """Get user's default API key for a provider"""
+    def get_user_default_api_key(self, user_id: str, provider: str) -> Optional[str]:
+        """Get user's default API key for a provider - returns the decrypted API key string"""
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Looking for API key for user_id: {user_id}, provider: {provider}")
+        
         api_keys = self._load_api_keys()
+        logger.info(f"Loaded {len(api_keys)} API keys from database")
         
         for key_data in api_keys:
+            logger.info(f"Checking key: user_id={key_data.get('user_id')}, provider={key_data.get('provider')}, is_default={key_data.get('is_default')}, status={key_data.get('status')}")
+            
             if (key_data.get("user_id") == user_id and 
                 key_data.get("provider") == provider and 
                 key_data.get("is_default") and
                 key_data.get("status") == APIKeyStatus.ACTIVE):
                 
-                # Decrypt and return full key
+                logger.info(f"Found matching API key: {key_data.get('id')}")
+                
+                # Decrypt and return the API key string
                 encrypted_key = key_data.get("encrypted_api_key", "")
                 if encrypted_key:
                     try:
                         decrypted_key = self._decrypt_api_key(encrypted_key)
-                        key_data["api_key"] = decrypted_key
-                    except Exception:
+                        logger.info("Successfully decrypted API key")
+                        return decrypted_key
+                    except Exception as e:
+                        logger.error(f"Failed to decrypt API key: {e}")
                         return None
-                
-                return APIKey(**key_data)
+                else:
+                    logger.warning("No encrypted API key found in key data")
+                    return None
         
+        logger.warning(f"No matching API key found for user_id: {user_id}, provider: {provider}")
         return None
     
     def update_api_key(self, key_id: str, api_key_update: APIKeyUpdate) -> Optional[APIKey]:

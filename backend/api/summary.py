@@ -10,18 +10,15 @@ from backend.models.auth import User
 router = APIRouter()
 
 # Initialize services (lazy loading for summarizer to avoid blocking startup)
-summarizer = None
+summarizers = {}  # Change from single instance to dict per user
 video_processor = VideoProcessor()
 
 def get_summarizer(user_id: Optional[str] = None):
     """Lazy load the summarizer to avoid blocking startup"""
-    global summarizer
-    if summarizer is None:
-        summarizer = Summarizer(user_id=user_id)
-    elif user_id and summarizer.user_id != user_id:
-        # Update user_id if different
-        summarizer.set_user_id(user_id)
-    return summarizer
+    global summarizers
+    if user_id not in summarizers:
+        summarizers[user_id] = Summarizer(user_id=user_id)
+    return summarizers[user_id]
 
 class SummaryRequest(BaseModel):
     video_id: str
@@ -50,6 +47,10 @@ async def summarize_video(
     Generate a summary for a video transcript using Gemini
     """
     try:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Summarize request for user: {current_user.id} (email: {current_user.email})")
+        
         # Get the transcript
         transcript = video_processor.get_transcript(request.video_id)
         if not transcript:
@@ -57,9 +58,13 @@ async def summarize_video(
         
         # Get summarizer with user context
         summarizer_instance = get_summarizer(current_user.id)
+        logger.info(f"Got summarizer instance for user {current_user.id}")
         
         # Check API key availability
-        if not summarizer_instance.has_api_key():
+        has_key = summarizer_instance.has_api_key()
+        logger.info(f"API key check result: {has_key}")
+        
+        if not has_key:
             raise HTTPException(
                 status_code=400, 
                 detail="No API key available. Please add a Google API key in your profile settings."
@@ -88,6 +93,11 @@ async def summarize_video(
     except HTTPException:
         raise
     except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in summarize_video: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Error generating summary: {str(e)}")
 
 @router.get("/api-key-status", response_model=APIKeyStatusResponse)

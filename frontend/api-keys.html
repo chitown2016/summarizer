@@ -182,7 +182,7 @@
 
     <script>
         // API base URL
-        const API_BASE = "/api";
+        const API_BASE = "http://localhost:8000/api";
         
         // Check authentication on page load
         window.addEventListener("load", function() {
@@ -191,13 +191,37 @@
         });
 
         // Check if user is authenticated
-        function checkAuthStatus() {
+        async function checkAuthStatus() {
             const token = localStorage.getItem("authToken");
             if (!token) {
                 window.location.href = "login.html";
                 return;
             }
-            showAuthenticatedUser();
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/me`, {
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    }
+                });
+                
+                console.log("Auth check response status:", response.status);
+                
+                if (response.ok) {
+                    const userData = await response.json();
+                    console.log("Current user:", userData);
+                    showAuthenticatedUser();
+                } else {
+                    console.log("Authentication failed, redirecting to login");
+                    localStorage.removeItem("authToken");
+                    localStorage.removeItem("user");
+                    window.location.href = "login.html";
+                }
+            } catch (error) {
+                console.error("Error checking auth status:", error);
+                window.location.href = "login.html";
+            }
         }
 
         // Show authenticated user interface
@@ -236,17 +260,24 @@
         async function loadApiKeys() {
             try {
                 const token = localStorage.getItem("authToken");
+                console.log("Loading API keys with token:", token ? token.substring(0, 20) + "..." : "No token");
+                
                 const response = await fetch(`${API_BASE}/auth/api-keys`, {
                     headers: {
                         "Authorization": `Bearer ${token}`
                     }
                 });
                 
+                console.log("Load API keys response status:", response.status);
+                
                 if (response.ok) {
                     const apiKeys = await response.json();
+                    console.log("Loaded API keys:", apiKeys);
                     displayApiKeys(apiKeys);
                     updateApiKeysStatus(apiKeys);
                 } else {
+                    const errorData = await response.json();
+                    console.log("Load API keys error:", errorData);
                     showMessage("Failed to load API keys", "error");
                 }
             } catch (error) {
@@ -289,10 +320,10 @@
                             ${key.last_used ? `<p class="text-white/60 text-sm">Last used: ${new Date(key.last_used).toLocaleDateString()}</p>` : ""}
                         </div>
                         <div class="flex items-center space-x-2">
-                            <button onclick="editApiKey(\"${key.id}\")" class="px-3 py-2 text-sm bg-blue-500/20 text-blue-300 rounded-lg hover:bg-blue-500/30 transition-colors">
+                            <button onclick="editApiKey('${key.id}')" class="px-3 py-2 text-sm bg-blue-500/20 text-blue-300 rounded-lg hover:bg-blue-500/30 transition-colors">
                                 Edit
                             </button>
-                            <button onclick="deleteApiKey(\"${key.id}\")" class="px-3 py-2 text-sm btn-danger text-white rounded-lg transition-colors">
+                            <button onclick="deleteApiKey('${key.id}')" class="px-3 py-2 text-sm btn-danger text-white rounded-lg transition-colors">
                                 Delete
                             </button>
                         </div>
@@ -397,12 +428,15 @@
 
         // Delete API key
         async function deleteApiKey(keyId) {
+            console.log("Delete button clicked for key ID:", keyId);
             if (!confirm("Are you sure you want to delete this API key?")) {
                 return;
             }
             
             try {
                 const token = localStorage.getItem("authToken");
+                console.log("Auth token:", token ? token.substring(0, 20) + "..." : "No token");
+                
                 const response = await fetch(`${API_BASE}/auth/api-keys/${keyId}`, {
                     method: "DELETE",
                     headers: {
@@ -410,11 +444,14 @@
                     }
                 });
                 
+                console.log("Delete response status:", response.status);
+                
                 if (response.ok) {
                     showMessage("API key deleted successfully!", "success");
                     loadApiKeys(); // Reload the list
                 } else {
                     const data = await response.json();
+                    console.log("Delete error response:", data);
                     showMessage(data.detail || "Failed to delete API key", "error");
                 }
             } catch (error) {

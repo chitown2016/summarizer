@@ -70,6 +70,7 @@ class VideoProcessor:
         """
         try:
             import yt_dlp
+            logger.info(f"Attempting to extract metadata for {url}")
             
             ydl_opts = {
                 'quiet': True,
@@ -78,9 +79,11 @@ class VideoProcessor:
             }
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                logger.info(f"Extracting info with yt-dlp for {url}")
                 info = ydl.extract_info(url, download=False)
+                logger.info(f"Successfully extracted metadata for {url}")
                 
-                return {
+                metadata = {
                     'title': info.get('title', 'Unknown'),
                     'description': info.get('description', ''),
                     'duration': info.get('duration'),
@@ -89,9 +92,14 @@ class VideoProcessor:
                     'view_count': info.get('view_count'),
                     'upload_date': info.get('upload_date'),
                 }
+                logger.info(f"Extracted metadata: {metadata}")
+                return metadata
                 
         except Exception as e:
-            logger.warning(f"Failed to extract YouTube metadata: {e}")
+            logger.error(f"Failed to extract YouTube metadata for {url}: {e}")
+            logger.error(f"Exception type: {type(e).__name__}")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             return {
                 'title': 'Unknown',
                 'description': '',
@@ -127,15 +135,18 @@ class VideoProcessor:
             self._update_video_status(video_id, VideoStatus.TRANSCRIBING, title, description, metadata)
             
             # Extract transcript
+            logger.info(f"Starting transcript extraction for {video_id}")
             transcript = self._extract_transcript(url)
             
             if transcript:
+                logger.info(f"Transcript extraction successful for {video_id}, length: {len(transcript)}")
                 # Save transcript
                 self._save_transcript(video_id, transcript)
                 # Update status to completed
                 self._update_video_status(video_id, VideoStatus.COMPLETED, title, description, metadata)
                 logger.info(f"Transcript extraction completed for {video_id}")
             else:
+                logger.error(f"Transcript extraction failed for {video_id} - no subtitles available")
                 # Update status to failed with specific reason
                 self._update_video_status(video_id, VideoStatus.FAILED, title, description, metadata)
                 logger.error(f"Transcript extraction failed for {video_id} - no subtitles available")

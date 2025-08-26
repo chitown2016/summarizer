@@ -124,36 +124,65 @@ class VideoProcessor:
             metadata = None
             if not title:
                 logger.info(f"Extracting YouTube metadata for {url}")
-                metadata = self._extract_youtube_metadata(url)
-                title = metadata['title']
-                if not description:
-                    description = metadata['description']
-                
-                logger.info(f"Extracted title: {title}")
+                try:
+                    metadata = self._extract_youtube_metadata(url)
+                    title = metadata['title']
+                    if not description:
+                        description = metadata['description']
+                    
+                    logger.info(f"Extracted title: {title}")
+                except Exception as e:
+                    logger.warning(f"Metadata extraction failed, using fallback title: {e}")
+                    # Use a fallback title based on the URL
+                    if 'youtube.com/watch?v=' in url:
+                        video_id = url.split('v=')[1].split('&')[0]
+                        title = f"YouTube Video ({video_id})"
+                    else:
+                        title = "YouTube Video"
+                    metadata = {
+                        'title': title,
+                        'description': '',
+                        'duration': None,
+                        'thumbnail': None,
+                        'uploader': '',
+                        'view_count': None,
+                        'upload_date': None,
+                    }
             
             # Update video status to transcribing
             self._update_video_status(video_id, VideoStatus.TRANSCRIBING, title, description, metadata)
             
             # Extract transcript
             logger.info(f"Starting transcript extraction for {video_id}")
-            transcript = self._extract_transcript(url)
-            
-            if transcript:
-                logger.info(f"Transcript extraction successful for {video_id}, length: {len(transcript)}")
-                # Save transcript
-                self._save_transcript(video_id, transcript)
-                # Update status to completed
-                self._update_video_status(video_id, VideoStatus.COMPLETED, title, description, metadata)
-                logger.info(f"Transcript extraction completed for {video_id}")
-            else:
-                logger.error(f"Transcript extraction failed for {video_id} - no subtitles available")
-                # Update status to failed with specific reason
+            try:
+                transcript = self._extract_transcript(url)
+                
+                if transcript and len(transcript.strip()) > 0:
+                    logger.info(f"Transcript extraction successful for {video_id}, length: {len(transcript)}")
+                    # Save transcript
+                    self._save_transcript(video_id, transcript)
+                    # Update status to completed
+                    self._update_video_status(video_id, VideoStatus.COMPLETED, title, description, metadata)
+                    logger.info(f"Transcript extraction completed for {video_id}")
+                else:
+                    logger.error(f"Transcript extraction failed for {video_id} - no subtitles available")
+                    # Update status to failed with specific reason
+                    self._update_video_status(video_id, VideoStatus.FAILED, title, description, metadata)
+                    logger.error(f"Transcript extraction failed for {video_id} - no subtitles available")
+                    # Save a placeholder transcript with error message
+                    error_message = "No transcript available for this video. This could be because:\n- The video doesn't have subtitles/closed captions\n- The subtitles are not publicly available\n- The video is private or restricted\n\nPlease try a different video with available subtitles."
+                    self._save_transcript(video_id, error_message)
+                    logger.info(f"Video {video_id} associated with user {user_id} and status set to FAILED")
+            except Exception as e:
+                logger.error(f"Exception during transcript extraction for {video_id}: {e}")
+                import traceback
+                logger.error(f"Transcript extraction traceback: {traceback.format_exc()}")
+                # Update status to failed
                 self._update_video_status(video_id, VideoStatus.FAILED, title, description, metadata)
-                logger.error(f"Transcript extraction failed for {video_id} - no subtitles available")
-                # Save a placeholder transcript with error message
-                error_message = "No transcript available for this video. This could be because:\n- The video doesn't have subtitles/closed captions\n- The subtitles are not publicly available\n- The video is private or restricted\n\nPlease try a different video with available subtitles."
+                # Save error message as transcript
+                error_message = f"Error extracting transcript: {str(e)}\n\nPlease try again or contact support if the problem persists."
                 self._save_transcript(video_id, error_message)
-                logger.info(f"Video {video_id} associated with user {user_id} and status set to FAILED")
+                logger.info(f"Video {video_id} associated with user {user_id} and status set to FAILED due to exception")
                 
         except Exception as e:
             logger.error(f"Error processing video {video_id}: {e}")

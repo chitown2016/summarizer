@@ -356,29 +356,44 @@ class VideoProcessor:
     def _extract_transcript(self, url: str) -> Optional[str]:
         """Extract transcript from YouTube video"""
         try:
+            # Extract YouTube video ID for debugging
+            youtube_video_id = None
+            if 'youtube.com/watch?v=' in url:
+                youtube_video_id = url.split('v=')[1].split('&')[0]
+            elif 'youtu.be/' in url:
+                youtube_video_id = url.split('youtu.be/')[1].split('?')[0]
+            
+            logger.info(f"Extracted video ID: {youtube_video_id} from URL: {url}")
+            
             # Try without proxy first
             logger.info(f"Attempting transcript extraction without proxy for {url}")
             transcript = self._extract_transcript_without_proxy(url)
             
             if transcript:
-                logger.info(f"Successfully extracted transcript for {url} without proxy")
+                logger.info(f"Successfully extracted transcript for {url} without proxy, length: {len(transcript)}")
                 return transcript
+            else:
+                logger.info(f"No transcript found with yt-dlp method for {url}")
             
             # If no transcript found, try with proxy
             logger.info(f"Attempting transcript extraction with proxy for {url}")
             transcript = self._extract_transcript_with_proxy(url)
             
             if transcript:
-                logger.info(f"Successfully extracted transcript for {url} with proxy")
+                logger.info(f"Successfully extracted transcript for {url} with proxy, length: {len(transcript)}")
                 return transcript
+            else:
+                logger.info(f"No transcript found with proxy method for {url}")
             
             # Try alternative methods
             logger.info(f"Attempting alternative transcript extraction methods for {url}")
             transcript = self._extract_transcript_alternative(url)
             
             if transcript:
-                logger.info(f"Successfully extracted transcript using alternative method for {url}")
+                logger.info(f"Successfully extracted transcript using alternative method for {url}, length: {len(transcript)}")
                 return transcript
+            else:
+                logger.info(f"No transcript found with alternative method for {url}")
             
             logger.warning(f"No transcript found for {url} - video may not have subtitles")
             return None
@@ -491,34 +506,55 @@ class VideoProcessor:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 logger.info(f"Attempting to extract transcript for {url}")
                 info = ydl.extract_info(url, download=False)
+                logger.info(f"yt-dlp info keys: {list(info.keys()) if info else 'None'}")
                 
                 # Check if subtitles are available
                 if 'subtitles' in info or 'automatic_captions' in info:
                     logger.info(f"Subtitles found for {url}")
+                    logger.info(f"Subtitles keys: {list(info.get('subtitles', {}).keys())}")
+                    logger.info(f"Automatic captions keys: {list(info.get('automatic_captions', {}).keys())}")
                     
                     # Try to get manual subtitles first
                     if 'subtitles' in info and info['subtitles']:
                         for lang, subs in info['subtitles'].items():
+                            logger.info(f"Checking manual subtitles for language: {lang}")
                             if lang.startswith('en'):
                                 for sub in subs:
+                                    logger.info(f"Found subtitle: {sub}")
                                     if sub['ext'] == 'vtt':
                                         logger.info(f"Found manual subtitle: {sub['url']}")
-                                        return self._download_and_parse_subtitle(sub['url'])
+                                        result = self._download_and_parse_subtitle(sub['url'])
+                                        if result:
+                                            logger.info(f"Successfully parsed manual subtitle, length: {len(result)}")
+                                            return result
+                                        else:
+                                            logger.warning(f"Failed to download/parse manual subtitle from {sub['url']}")
                     
                     # Try automatic captions if no manual subtitles
                     if 'automatic_captions' in info and info['automatic_captions']:
                         for lang, subs in info['automatic_captions'].items():
+                            logger.info(f"Checking automatic captions for language: {lang}")
                             if lang.startswith('en'):
                                 for sub in subs:
+                                    logger.info(f"Found automatic caption: {sub}")
                                     if sub['ext'] == 'vtt':
                                         logger.info(f"Found automatic caption: {sub['url']}")
-                                        return self._download_and_parse_subtitle(sub['url'])
+                                        result = self._download_and_parse_subtitle(sub['url'])
+                                        if result:
+                                            logger.info(f"Successfully parsed automatic caption, length: {len(result)}")
+                                            return result
+                                        else:
+                                            logger.warning(f"Failed to download/parse automatic caption from {sub['url']}")
+                else:
+                    logger.warning(f"No subtitles or automatic_captions found in yt-dlp info for {url}")
                 
                 logger.warning(f"No subtitles found in yt-dlp info for {url}")
                 return None
                 
         except Exception as e:
             logger.error(f"Error extracting transcript without proxy for {url}: {e}")
+            import traceback
+            logger.error(f"yt-dlp error traceback: {traceback.format_exc()}")
             return None
     
     def _extract_transcript_with_proxy(self, url: str) -> Optional[str]:

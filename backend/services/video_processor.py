@@ -142,6 +142,7 @@ class VideoProcessor:
                 # Save a placeholder transcript with error message
                 error_message = "No transcript available for this video. This could be because:\n- The video doesn't have subtitles/closed captions\n- The subtitles are not publicly available\n- The video is private or restricted\n\nPlease try a different video with available subtitles."
                 self._save_transcript(video_id, error_message)
+                logger.info(f"Video {video_id} associated with user {user_id} and status set to FAILED")
                 
         except Exception as e:
             logger.error(f"Error processing video {video_id}: {e}")
@@ -220,13 +221,19 @@ class VideoProcessor:
     
     def get_user_videos(self, user_id: str) -> List[UserVideoInfo]:
         """Get list of videos requested by a specific user"""
+        logger.info(f"Getting videos for user {user_id}")
+        logger.info(f"User videos mapping: {self.user_videos}")
+        
         if user_id not in self.user_videos:
+            logger.info(f"User {user_id} not found in user_videos mapping")
             return []
         
         videos = []
         for video_id in self.user_videos[user_id]:
+            logger.info(f"Checking video {video_id} for user {user_id}")
             if video_id in self.videos_metadata:
                 video_data = self.videos_metadata[video_id]
+                logger.info(f"Video {video_id} metadata: {video_data}")
                 videos.append(UserVideoInfo(
                     id=video_data["id"],
                     title=video_data["title"],
@@ -239,9 +246,12 @@ class VideoProcessor:
                     user_id=user_id,
                     user_requested_at=datetime.fromisoformat(video_data["created_at"])  # Use created_at as requested_at
                 ))
+            else:
+                logger.warning(f"Video {video_id} not found in metadata for user {user_id}")
         
         # Sort by user_requested_at (most recent first)
         videos.sort(key=lambda x: x.user_requested_at, reverse=True)
+        logger.info(f"Returning {len(videos)} videos for user {user_id}")
         return videos
     
     def get_video(self, video_id: str) -> Optional[VideoInfo]:
@@ -335,6 +345,9 @@ class VideoProcessor:
             
         except Exception as e:
             logger.error(f"Error extracting transcript for {url}: {e}")
+            logger.error(f"Full error details: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return None
     
     def _extract_transcript_alternative(self, url: str) -> Optional[str]:
@@ -384,6 +397,7 @@ class VideoProcessor:
                         
                 except Exception as e:
                     logger.warning(f"Failed to get transcript in {lang}: {e}")
+                    logger.warning(f"Full error for {lang}: {str(e)}")
                     continue
             
             # If no specific language worked, try without language specification
@@ -408,17 +422,22 @@ class VideoProcessor:
                     
             except Exception as e:
                 logger.warning(f"Failed to get transcript without language specification: {e}")
+                logger.warning(f"Full error without language spec: {str(e)}")
             
             logger.warning(f"No transcript found for video ID: {youtube_video_id}")
             return None
             
         except Exception as e:
             logger.error(f"Alternative transcript extraction failed: {e}")
+            logger.error(f"Full error details for alternative method: {str(e)}")
+            import traceback
+            logger.error(f"Alternative method traceback: {traceback.format_exc()}")
             return None
     
     def _extract_transcript_without_proxy(self, url: str) -> Optional[str]:
         """Extract transcript without using proxy"""
         try:
+            import yt_dlp
             # Use yt-dlp to extract transcript
             ydl_opts = {
                 'writesubtitles': True,
@@ -465,6 +484,7 @@ class VideoProcessor:
     def _extract_transcript_with_proxy(self, url: str) -> Optional[str]:
         """Extract transcript using proxy (if configured)"""
         try:
+            import yt_dlp
             # Check if proxy is configured
             proxy_url = os.getenv('HTTP_PROXY') or os.getenv('HTTPS_PROXY')
             if not proxy_url:

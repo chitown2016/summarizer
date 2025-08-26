@@ -405,7 +405,7 @@
         async function monitorExtraction(videoId) {
             const statusText = document.getElementById('statusText');
             const startTime = Date.now();
-            const maxWaitTime = 5 * 60 * 1000; // 5 minutes max
+            const maxWaitTime = 2 * 60 * 1000; // 2 minutes max (reduced for faster feedback)
 
             while (Date.now() - startTime < maxWaitTime) {
                 try {
@@ -425,10 +425,12 @@
                     const data = await response.json();
 
                     if (response.ok) {
+                        console.log(`Monitoring video ${videoId}:`, data);
                         // Look for our video in the list
                         const video = data.videos.find(v => v.id === videoId);
                         
                         if (video) {
+                            console.log(`Found video ${videoId} with status:`, video.status);
                             if (video.status === 'completed') {
                                 statusText.textContent = '✅ Video processing completed successfully!';
                                 return true;
@@ -447,6 +449,7 @@
                             }
                         } else {
                             // Video not found yet, still processing
+                            console.log(`Video ${videoId} not found in user's video list yet`);
                             statusText.textContent = '⏳ Processing video...';
                             await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
                         }

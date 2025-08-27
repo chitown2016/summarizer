@@ -50,6 +50,7 @@ async def health_check():
 
 # Root endpoint to serve frontend
 @app.get("/")
+@app.get("/index.html")
 async def root():
     from fastapi.responses import FileResponse
     return FileResponse('frontend/index.html')

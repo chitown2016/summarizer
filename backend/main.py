@@ -54,6 +54,26 @@ async def root():
     from fastapi.responses import FileResponse
     return FileResponse('frontend/index.html')
 
+@app.get("/api-keys.html")
+async def api_keys_page():
+    from fastapi.responses import FileResponse
+    return FileResponse('frontend/api-keys.html')
+
+@app.get("/videos.html")
+async def videos_page():
+    from fastapi.responses import FileResponse
+    return FileResponse('frontend/videos.html')
+
+@app.get("/login.html")
+async def login_page():
+    from fastapi.responses import FileResponse
+    return FileResponse('frontend/login.html')
+
+@app.get("/register.html")
+async def register_page():
+    from fastapi.responses import FileResponse
+    return FileResponse('frontend/register.html')
+
 @app.get("/api/status")
 async def get_status():
     """Get detailed status of the backend services"""
@@ -73,6 +93,8 @@ async def get_status():
         },
         "timestamp": time.time()
     }
+
+
 
 if __name__ == "__main__":
     import uvicorn

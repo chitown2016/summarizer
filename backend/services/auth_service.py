@@ -5,6 +5,7 @@ Authentication service for user management and JWT token handling
 import os
 import uuid
 import json
+import logging
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from pathlib import Path
@@ -340,7 +341,7 @@ class AuthService:
     
     def get_user_default_api_key(self, user_id: str, provider: str) -> Optional[str]:
         """Get user's default API key for a provider - returns the decrypted API key string"""
-        import logging
+        # Get logger from centralized configuration
         logger = logging.getLogger(__name__)
         logger.info(f"Looking for API key for user_id: {user_id}, provider: {provider}")
         

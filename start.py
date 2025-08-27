@@ -104,12 +104,23 @@ def wait_for_backend():
     max_attempts = 30
     for attempt in range(max_attempts):
         try:
+            # Try the health endpoint first
             response = requests.get('http://localhost:8000/health', timeout=5)
             if response.status_code == 200:
                 print("✅ Backend is ready!")
                 return True
         except:
             pass
+        
+        try:
+            # Fallback: try the API status endpoint
+            response = requests.get('http://localhost:8000/api/status', timeout=5)
+            if response.status_code == 200:
+                print("✅ Backend is ready!")
+                return True
+        except:
+            pass
+        
         time.sleep(2)
         print("⏳ Waiting for backend...")
     

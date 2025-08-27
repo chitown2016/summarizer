@@ -107,6 +107,7 @@ dmypy.json
 
 # Project specific
 data/
+logs/
 *.mp3
 *.mp4
 *.wav

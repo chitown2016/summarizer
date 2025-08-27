@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
+import logging
 
 from backend.services.summarizer import Summarizer
 from backend.services.video_processor import VideoProcessor
@@ -47,7 +48,7 @@ async def summarize_video(
     Generate a summary for a video transcript using Gemini
     """
     try:
-        import logging
+        # Get logger from centralized configuration
         logger = logging.getLogger(__name__)
         logger.info(f"Summarize request for user: {current_user.id} (email: {current_user.email})")
         
@@ -93,7 +94,7 @@ async def summarize_video(
     except HTTPException:
         raise
     except Exception as e:
-        import logging
+        # Get logger from centralized configuration
         logger = logging.getLogger(__name__)
         logger.error(f"Error in summarize_video: {e}")
         import traceback

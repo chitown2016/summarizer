@@ -19,7 +19,7 @@ from backend.models.auth import User
 
 router = APIRouter()
 
-# Configure logging
+# Get logger from centralized configuration
 logger = logging.getLogger(__name__)
 
 # Initialize services

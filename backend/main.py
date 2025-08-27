@@ -8,6 +8,10 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Setup logging
+from backend.utils.logging_config import setup_logging
+setup_logging()
+
 # Import API routes
 from backend.api import video, summary, auth
 
@@ -33,7 +37,7 @@ app.include_router(summary.router, prefix="/api", tags=["summary"])
 app.include_router(auth.router, prefix="/api", tags=["authentication"])
 
 # Mount static files for frontend (after API routes to avoid conflicts)
-app.mount('/', StaticFiles(directory='frontend', html=True), name='frontend')
+app.mount('/app', StaticFiles(directory='frontend', html=True), name='frontend')
 
 # Health check endpoint
 @app.get("/health")
@@ -43,6 +47,12 @@ async def health_check():
         "message": "Backend is running and ready to accept requests",
         "timestamp": time.time()
     }
+
+# Root endpoint to serve frontend
+@app.get("/")
+async def root():
+    from fastapi.responses import FileResponse
+    return FileResponse('frontend/index.html')
 
 @app.get("/api/status")
 async def get_status():

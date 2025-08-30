@@ -27,7 +27,7 @@ def setup_logging():
     
     # Console handler (INFO level)
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(logging.DEBUG)
     console_handler.setFormatter(simple_formatter)
     
     # File handler with rotation (DEBUG level for detailed logs)

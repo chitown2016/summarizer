@@ -90,8 +90,13 @@ class VideoProcessor:
             'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
             # Add rate limiting
             'sleep_interval': 1,
-            'max_sleep_interval': 5,
-        }
+            'max_sleep_interval': 5}
+
+            proxy_url = os.getenv('HTTP_PROXY') or os.getenv('HTTPS_PROXY')
+            if proxy_url:
+                ydl_opts['proxy'] = proxy_url
+
+
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 logger.debug(f"Extracting info with yt-dlp")
@@ -369,49 +374,48 @@ class VideoProcessor:
     def _extract_transcript(self, url: str) -> Optional[str]:
         """Extract transcript from YouTube video"""
         try:
-            # Extract YouTube video ID for debugging
-            youtube_video_id = None
-            if 'youtube.com/watch?v=' in url:
-                youtube_video_id = url.split('v=')[1].split('&')[0]
-            elif 'youtu.be/' in url:
-                youtube_video_id = url.split('youtu.be/')[1].split('?')[0]
+            # Check if we're in a cloud environment
+            is_cloud = os.getenv('DYNO') or os.getenv('HEROKU_APP_NAME') or os.getenv('PORT')
             
-            logger.debug(f"Extracted video ID: {youtube_video_id}")
-            
-            # Try without proxy first
-            logger.debug(f"Attempting transcript extraction without proxy")
-            transcript = self._extract_transcript_without_proxy(url)
-            logger.info("KUZU3")
-            logger.debug(f"Transcript: {transcript}")
-            logger.info("KUZU4")
-            
-            if transcript:
-                logger.info(f"Successfully extracted transcript without proxy, length: {len(transcript)} characters")
-                return transcript
+            # In cloud environments, try proxy first (or skip non-proxy entirely)
+            if is_cloud:
+                logger.info("Cloud environment detected - trying proxy first")
+                
+                # Try with proxy first
+                transcript = self._extract_transcript_with_proxy(url)
+                if transcript:
+                    logger.info(f"Successfully extracted transcript with proxy, length: {len(transcript)} characters")
+                    return transcript
+                
+                # Only try without proxy as fallback
+                logger.debug("Proxy failed, trying without proxy as fallback")
+                transcript = self._extract_transcript_without_proxy(url)
+                if transcript:
+                    logger.info(f"Successfully extracted transcript without proxy, length: {len(transcript)} characters")
+                    return transcript
             else:
-                logger.debug(f"No transcript found with yt-dlp method")
-            
-            # If no transcript found, try with proxy
-            logger.debug(f"Attempting transcript extraction with proxy")
-            transcript = self._extract_transcript_with_proxy(url)
-            
-            if transcript:
-                logger.info(f"Successfully extracted transcript with proxy, length: {len(transcript)} characters")
-                return transcript
-            else:
-                logger.debug(f"No transcript found with proxy method")
+                # Local development - try without proxy first
+                logger.debug("Local environment - trying without proxy first")
+                transcript = self._extract_transcript_without_proxy(url)
+                if transcript:
+                    logger.info(f"Successfully extracted transcript without proxy, length: {len(transcript)} characters")
+                    return transcript
+                
+                # Try with proxy as fallback
+                transcript = self._extract_transcript_with_proxy(url)
+                if transcript:
+                    logger.info(f"Successfully extracted transcript with proxy, length: {len(transcript)} characters")
+                    return transcript
             
             # Try alternative methods
-            logger.debug(f"Attempting alternative transcript extraction methods")
+            logger.debug("Attempting alternative transcript extraction methods")
             transcript = self._extract_transcript_alternative(url)
             
             if transcript:
                 logger.info(f"Successfully extracted transcript using alternative method, length: {len(transcript)} characters")
                 return transcript
-            else:
-                logger.debug(f"No transcript found with alternative method")
             
-            logger.warning(f"No transcript found - video may not have subtitles")
+            logger.warning("No transcript found - video may not have subtitles")
             return None
             
         except Exception as e:
@@ -666,7 +670,7 @@ class VideoProcessor:
             import requests
             response = requests.get(subtitle_url, timeout=30)
             if response.status_code == 200:
-                logger.debug(f"Successfully downloaded subtitle")
+                logger.debug(f"_download_and_parse_subtitle status code: {response.status_code}")
                 return self._parse_subtitle_content(response.text)
             else:
                 logger.error(f"Failed to download subtitle: {response.status_code}")

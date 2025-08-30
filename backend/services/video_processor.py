@@ -70,12 +70,28 @@ class VideoProcessor:
         try:
             import yt_dlp
             logger.info(f"Extracting metadata for video URL")
+            logger.info(f"Now using better headers")
             
             ydl_opts = {
-                'quiet': True,
-                'no_warnings': True,
-                'extract_flat': False,
-            }
+            'quiet': True,
+            'no_warnings': True,
+            'extract_flat': False,
+            # Add headers to avoid bot detection
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-us,en;q=0.5',
+                'Accept-Encoding': 'gzip,deflate',
+                'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.7',
+                'Keep-Alive': '115',
+                'Connection': 'keep-alive',
+            },
+            # Add cookies file if available
+            'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
+            # Add rate limiting
+            'sleep_interval': 1,
+            'max_sleep_interval': 5,
+        }
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 logger.debug(f"Extracting info with yt-dlp")

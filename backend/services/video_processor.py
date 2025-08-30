@@ -381,6 +381,9 @@ class VideoProcessor:
             # Try without proxy first
             logger.debug(f"Attempting transcript extraction without proxy")
             transcript = self._extract_transcript_without_proxy(url)
+            logger.info("KUZU3")
+            logger.debug(f"Transcript: {transcript}")
+            logger.info("KUZU4")
             
             if transcript:
                 logger.info(f"Successfully extracted transcript without proxy, length: {len(transcript)} characters")
@@ -563,7 +566,9 @@ class VideoProcessor:
         except Exception as e:
             logger.error(f"Error extracting transcript without proxy: {e}")
             import traceback
+            logger.info("KUZU1")
             logger.error(f"yt-dlp error traceback: {traceback.format_exc()}")
+            logger.info("KUZU2")
             return None
     
     def _extract_transcript_with_proxy(self, url: str) -> Optional[str]:

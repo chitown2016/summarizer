@@ -3,11 +3,27 @@ import json
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 import logging
-
+import requests
 from backend.models.schemas import VideoInfo, VideoStatus, UserVideoInfo
+from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api.proxies import WebshareProxyConfig
 
 # Get logger from centralized configuration
 logger = logging.getLogger(__name__)
+
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
+
+def _is_cloud_environment() -> bool:
+    """
+    Check if the application is running in a cloud environment
+    Returns True if running on Heroku or other cloud platforms
+    """
+    # DYNO and HEROKU_APP_NAME are Heroku-specific environment variables
+    # PORT alone is not sufficient as it can be set locally
+    return bool(os.getenv('DYNO') or os.getenv('HEROKU_APP_NAME'))
 
 class VideoProcessor:
     def __init__(self):
@@ -61,66 +77,55 @@ class VideoProcessor:
                 json.dump(self.user_videos, f, indent=2, default=str)
         except Exception as e:
             logger.error(f"Error saving user videos: {e}")
+
+    def _get_video_info(self, url: str) -> Dict[str, Any]:
+
+        video_id = None
+        if 'youtube.com/watch?v=' in url:
+            video_id = url.split('v=')[1].split('&')[0]
+        elif 'youtu.be/' in url:
+            video_id = url.split('youtu.be/')[1].split('?')[0]
+
+        oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
+
+        headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            
     
-    def _extract_youtube_metadata(self, url: str) -> Dict[str, Any]:
+        response = requests.get(oembed_url, headers=headers, timeout=5,proxies= {
+                        'http': os.getenv('HTTP_PROXY'),
+                        'https': os.getenv('HTTPS_PROXY'),
+                    })
+        response.raise_for_status()
+                
+        data = response.json()
+
+        return data
+
+    def _extract_video_info_and_transcript(self, url: str) -> tuple[Dict[str, Any], Optional[str]]:
         """
-        Extract YouTube video metadata using yt-dlp
-        Returns: title, description, duration, thumbnail
+        Extract both metadata and transcript in a single yt-dlp call
+        Returns: (metadata_dict, transcript_string)
         """
         try:
-            import yt_dlp
-            logger.info(f"Extracting metadata for video URL")
-            logger.info(f"Now using better headers")
+            logger.info(f"Extracting video info and transcript in single call")
+
+            metadata = self._get_video_info(url)
+            logger.info(f"Extracted metadata: {metadata}")
+
+            transcript = self._extract_transcript(url)
             
-            ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
-            'extract_flat': False,
-            # Add headers to avoid bot detection
-            'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-us,en;q=0.5',
-                'Accept-Encoding': 'gzip,deflate',
-                'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.7',
-                'Keep-Alive': '115',
-                'Connection': 'keep-alive',
-            },
-            # Add cookies file if available
-            'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
-            # Add rate limiting
-            'sleep_interval': 1,
-            'max_sleep_interval': 5}
-
-            proxy_url = os.getenv('HTTP_PROXY') or os.getenv('HTTPS_PROXY')
-            if proxy_url:
-                ydl_opts['proxy'] = proxy_url
-
-
-            
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                logger.debug(f"Extracting info with yt-dlp")
-                info = ydl.extract_info(url, download=False)
-                logger.info(f"Successfully extracted metadata")
-                
-                metadata = {
-                    'title': info.get('title', 'Unknown'),
-                    'description': info.get('description', ''),
-                    'duration': info.get('duration'),
-                    'thumbnail': info.get('thumbnail'),
-                    'uploader': info.get('uploader', ''),
-                    'view_count': info.get('view_count'),
-                    'upload_date': info.get('upload_date'),
-                }
-                logger.debug(f"Extracted metadata: title='{metadata['title']}', duration={metadata['duration']}")
-                return metadata
+            return metadata, transcript
                 
         except Exception as e:
-            logger.error(f"Failed to extract YouTube metadata: {e}")
+            logger.error(f"Failed to extract video info and transcript: {e}")
             logger.error(f"Exception type: {type(e).__name__}")
             import traceback
             logger.error(f"Full traceback: {traceback.format_exc()}")
-            return {
+            
+            # Return fallback metadata
+            fallback_metadata = {
                 'title': 'Unknown',
                 'description': '',
                 'duration': None,
@@ -129,6 +134,9 @@ class VideoProcessor:
                 'view_count': None,
                 'upload_date': None,
             }
+            return fallback_metadata, None
+
+    
     
     def process_video(self, video_id: str, url: str, user_id: str, title: Optional[str] = None, description: Optional[str] = None):
         """
@@ -140,68 +148,37 @@ class VideoProcessor:
             # Associate video with user
             self._associate_video_with_user(video_id, user_id)
             
-            # Extract YouTube metadata if title is not provided
+            # Extract both metadata and transcript in single call
             metadata = None
-            if not title:
-                logger.info(f"Extracting YouTube metadata")
-                try:
-                    metadata = self._extract_youtube_metadata(url)
-                    title = metadata['title']
-                    if not description:
-                        description = metadata['description']
-                    
-                    logger.info(f"Extracted title: {title}")
-                except Exception as e:
-                    logger.warning(f"Metadata extraction failed, using fallback title: {e}")
-                    # Use a fallback title based on the URL
-                    if 'youtube.com/watch?v=' in url:
-                        video_id = url.split('v=')[1].split('&')[0]
-                        title = f"YouTube Video ({video_id})"
-                    else:
-                        title = "YouTube Video"
-                    metadata = {
-                        'title': title,
-                        'description': '',
-                        'duration': None,
-                        'thumbnail': None,
-                        'uploader': '',
-                        'view_count': None,
-                        'upload_date': None,
-                    }
+            transcript = None
             
+            logger.info(f"Extracting video info and transcript")
+            try:
+                metadata, transcript = self._extract_video_info_and_transcript(url)
+                title = metadata['title']
+                logger.info(f"Extracted title: {title}")
+            except Exception as e:
+                logger.warning(f"Video info and transcript extraction failed: {e}")
+                   
             # Update video status to transcribing
             self._update_video_status(video_id, VideoStatus.TRANSCRIBING, title, description, metadata)
             
-            # Extract transcript
-            logger.info(f"Starting transcript extraction for video {video_id}")
-            try:
-                transcript = self._extract_transcript(url)
-                
-                if transcript and len(transcript.strip()) > 0:
-                    logger.info(f"Transcript extraction successful for video {video_id}, length: {len(transcript)} characters")
-                    # Save transcript
-                    self._save_transcript(video_id, transcript)
-                    # Update status to completed
-                    self._update_video_status(video_id, VideoStatus.COMPLETED, title, description, metadata)
-                    logger.info(f"Transcript extraction completed for video {video_id}")
-                else:
-                    logger.error(f"Transcript extraction failed for video {video_id} - no subtitles available")
-                    # Update status to failed with specific reason
-                    self._update_video_status(video_id, VideoStatus.FAILED, title, description, metadata)
-                    # Save a placeholder transcript with error message
-                    error_message = "No transcript available for this video. This could be because:\n- The video doesn't have subtitles/closed captions\n- The subtitles are not publicly available\n- The video is private or restricted\n\nPlease try a different video with available subtitles."
-                    self._save_transcript(video_id, error_message)
-                    logger.info(f"Video {video_id} associated with user {user_id} and status set to FAILED")
-            except Exception as e:
-                logger.error(f"Exception during transcript extraction for video {video_id}: {e}")
-                import traceback
-                logger.error(f"Transcript extraction traceback: {traceback.format_exc()}")
+            # Process transcript
+            if transcript and len(transcript.strip()) > 0:
+                logger.info(f"Transcript extraction successful for video {video_id}, length: {len(transcript)} characters")
+                # Save transcript
+                self._save_transcript(video_id, transcript)
+                # Update status to completed
+                self._update_video_status(video_id, VideoStatus.COMPLETED, title, description, metadata)
+                logger.info(f"Transcript extraction completed for video {video_id}")
+            else:
+                logger.error(f"Transcript extraction failed for video {video_id} - no subtitles available")
                 # Update status to failed
                 self._update_video_status(video_id, VideoStatus.FAILED, title, description, metadata)
-                # Save error message as transcript
-                error_message = f"Error extracting transcript: {str(e)}\n\nPlease try again or contact support if the problem persists."
+                # Save a placeholder transcript with error message
+                error_message = "No transcript available for this video. This could be because:\n- The video doesn't have subtitles/closed captions\n- The subtitles are not publicly available\n- The video is private or restricted\n\nPlease try a different video with available subtitles."
                 self._save_transcript(video_id, error_message)
-                logger.info(f"Video {video_id} associated with user {user_id} and status set to FAILED due to exception")
+                logger.info(f"Video {video_id} associated with user {user_id} and status set to FAILED")
                 
         except Exception as e:
             logger.error(f"Error processing video {video_id}: {e}")
@@ -372,60 +349,7 @@ class VideoProcessor:
             return False
     
     def _extract_transcript(self, url: str) -> Optional[str]:
-        """Extract transcript from YouTube video"""
-        try:
-            # Check if we're in a cloud environment
-            is_cloud = os.getenv('DYNO') or os.getenv('HEROKU_APP_NAME') or os.getenv('PORT')
-            
-            # In cloud environments, try proxy first (or skip non-proxy entirely)
-            if is_cloud:
-                logger.info("Cloud environment detected - trying proxy first")
-                
-                # Try with proxy first
-                transcript = self._extract_transcript_with_proxy(url)
-                if transcript:
-                    logger.info(f"Successfully extracted transcript with proxy, length: {len(transcript)} characters")
-                    return transcript
-                
-                # Only try without proxy as fallback
-                logger.debug("Proxy failed, trying without proxy as fallback")
-                transcript = self._extract_transcript_without_proxy(url)
-                if transcript:
-                    logger.info(f"Successfully extracted transcript without proxy, length: {len(transcript)} characters")
-                    return transcript
-            else:
-                # Local development - try without proxy first
-                logger.debug("Local environment - trying without proxy first")
-                transcript = self._extract_transcript_without_proxy(url)
-                if transcript:
-                    logger.info(f"Successfully extracted transcript without proxy, length: {len(transcript)} characters")
-                    return transcript
-                
-                # Try with proxy as fallback
-                transcript = self._extract_transcript_with_proxy(url)
-                if transcript:
-                    logger.info(f"Successfully extracted transcript with proxy, length: {len(transcript)} characters")
-                    return transcript
-            
-            # Try alternative methods
-            logger.debug("Attempting alternative transcript extraction methods")
-            transcript = self._extract_transcript_alternative(url)
-            
-            if transcript:
-                logger.info(f"Successfully extracted transcript using alternative method, length: {len(transcript)} characters")
-                return transcript
-            
-            logger.warning("No transcript found - video may not have subtitles")
-            return None
-            
-        except Exception as e:
-            logger.error(f"Error extracting transcript: {e}")
-            import traceback
-            logger.error(f"Traceback: {traceback.format_exc()}")
-            return None
-    
-    def _extract_transcript_alternative(self, url: str) -> Optional[str]:
-        """Try alternative transcript extraction methods"""
+
         try:
             # Try using youtube-transcript-api as fallback
             from youtube_transcript_api import YouTubeTranscriptApi
@@ -442,217 +366,42 @@ class VideoProcessor:
             
             logger.debug(f"Attempting to get transcript for video ID: {youtube_video_id}")
             
-            # Create API instance (without proxy for now)
-            ytt_api = YouTubeTranscriptApi()
+            ytt_api = YouTubeTranscriptApi(proxy_config=WebshareProxyConfig(
+            proxy_username=os.getenv('PROXY_USERNAME'),
+                proxy_password=os.getenv('PROXY_PASSWORD'),
+            ))
             
-            # Try to get transcript in different languages
-            languages_to_try = ['en', 'en-US', 'en-GB', 'en-CA', 'en-AU']
+            # First, try to get all available languages to detect original language
+           
+            logger.debug("Getting list of available languages")
+            transcript_list = ytt_api.list(youtube_video_id)
+
+            language_code = 'en'
+
+            for transcript in transcript_list:
+
+                if transcript.language_code == 'en':
+                    break
+                else:
+                    language_code = transcript.language_code
             
-            for lang in languages_to_try:
-                try:
-                    logger.debug(f"Trying to get transcript in language: {lang}")
-                    # Use the new API method: fetch() instead of get_transcript()
-                    transcript = ytt_api.fetch(youtube_video_id, languages=[lang])
-                    
-                    if transcript:
-                        logger.info(f"Successfully got transcript in {lang}")
-                        # Get raw data format (compatible with old API format)
-                        raw_data = transcript.to_raw_data()
-                        
-                        # Extract text from transcript segments
-                        text_parts = []
-                        for segment in raw_data:
-                            if 'text' in segment:
-                                text_parts.append(segment['text'])
-                        
-                        transcript_text = ' '.join(text_parts)
-                        logger.info(f"Extracted {len(text_parts)} segments, total length: {len(transcript_text)} characters")
-                        return transcript_text
-                        
-                except Exception as e:
-                    logger.debug(f"Failed to get transcript in {lang}: {e}")
-                    continue
+            raw_data = transcript_list.find_transcript([language_code]).fetch().to_raw_data()
+
+            text_parts = []
+            for segment in raw_data:
+                if 'text' in segment:
+                    text_parts.append(segment['text'])
             
-            # If no specific language worked, try without language specification
-            try:
-                logger.debug("Trying to get transcript without language specification")
-                transcript = ytt_api.fetch(youtube_video_id)
-                
-                if transcript:
-                    logger.info("Successfully got transcript without language specification")
-                    # Get raw data format
-                    raw_data = transcript.to_raw_data()
-                    
-                    # Extract text from transcript segments
-                    text_parts = []
-                    for segment in raw_data:
-                        if 'text' in segment:
-                            text_parts.append(segment['text'])
-                    
-                    transcript_text = ' '.join(text_parts)
-                    logger.info(f"Extracted {len(text_parts)} segments, total length: {len(transcript_text)} characters")
-                    return transcript_text
-                    
-            except Exception as e:
-                logger.debug(f"Failed to get transcript without language specification: {e}")
+            transcript_text = ' '.join(text_parts)
             
-            logger.warning(f"No transcript found for video ID: {youtube_video_id}")
-            return None
-            
+            return transcript_text
+               
         except Exception as e:
             logger.error(f"Alternative transcript extraction failed: {e}")
             import traceback
             logger.error(f"Alternative method traceback: {traceback.format_exc()}")
             return None
-    
-    def _extract_transcript_without_proxy(self, url: str) -> Optional[str]:
-        """Extract transcript without using proxy"""
-        try:
-            import yt_dlp
-            # Use yt-dlp to extract transcript
-            ydl_opts = {
-                'writesubtitles': True,
-                'writeautomaticsub': True,
-                'subtitleslangs': ['en'],
-                'skip_download': True,
-                'quiet': True,
-                'no_warnings': True,
-            }
-            
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                logger.debug(f"Attempting to extract transcript")
-                info = ydl.extract_info(url, download=False)
-                logger.debug(f"yt-dlp info keys: {list(info.keys()) if info else 'None'}")
-                
-                # Check if subtitles are available
-                if 'subtitles' in info or 'automatic_captions' in info:
-                    logger.debug(f"Subtitles found")
-                    logger.debug(f"Subtitles keys: {list(info.get('subtitles', {}).keys())}")
-                    logger.debug(f"Automatic captions keys: {list(info.get('automatic_captions', {}).keys())}")
-                    
-                    # Try to get manual subtitles first
-                    if 'subtitles' in info and info['subtitles']:
-                        for lang, subs in info['subtitles'].items():
-                            logger.debug(f"Checking manual subtitles for language: {lang}")
-                            if lang.startswith('en'):
-                                for sub in subs:
-                                    logger.debug(f"Found subtitle: {sub}")
-                                    if sub['ext'] == 'vtt':
-                                        logger.debug(f"Found manual subtitle")
-                                        result = self._download_and_parse_subtitle(sub['url'])
-                                        if result:
-                                            logger.info(f"Successfully parsed manual subtitle, length: {len(result)} characters")
-                                            return result
-                                        else:
-                                            logger.warning(f"Failed to download/parse manual subtitle")
-                    
-                    # Try automatic captions if no manual subtitles
-                    if 'automatic_captions' in info and info['automatic_captions']:
-                        for lang, subs in info['automatic_captions'].items():
-                            logger.debug(f"Checking automatic captions for language: {lang}")
-                            if lang.startswith('en'):
-                                for sub in subs:
-                                    logger.debug(f"Found automatic caption: {sub}")
-                                    if sub['ext'] == 'vtt':
-                                        logger.debug(f"Found automatic caption")
-                                        result = self._download_and_parse_subtitle(sub['url'])
-                                        if result:
-                                            logger.info(f"Successfully parsed automatic caption, length: {len(result)} characters")
-                                            return result
-                                        else:
-                                            logger.warning(f"Failed to download/parse automatic caption")
-                else:
-                    logger.debug(f"No subtitles or automatic_captions found in yt-dlp info")
-                
-                logger.debug(f"No subtitles found in yt-dlp info")
-                return None
-                
-        except Exception as e:
-            logger.error(f"Error extracting transcript without proxy: {e}")
-            import traceback
-            logger.info("KUZU1")
-            logger.error(f"yt-dlp error traceback: {traceback.format_exc()}")
-            logger.info("KUZU2")
-            return None
-    
-    def _extract_transcript_with_proxy(self, url: str) -> Optional[str]:
-        """Extract transcript using proxy (if configured)"""
-        try:
-            import yt_dlp
-            # Check if proxy is configured
-            proxy_url = os.getenv('HTTP_PROXY') or os.getenv('HTTPS_PROXY')
-            if not proxy_url:
-                logger.debug("No proxy configured for transcript extraction")
-                return None
-            
-            logger.debug(f"Using proxy for transcript extraction")
-            
-            # Use yt-dlp with proxy
-            ydl_opts = {
-                'writesubtitles': True,
-                'writeautomaticsub': True,
-                'subtitleslangs': ['en'],
-                'skip_download': True,
-                'quiet': True,
-                'no_warnings': True,
-                'proxy': proxy_url,
-            }
-            
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                
-                # Check if subtitles are available
-                if 'subtitles' in info or 'automatic_captions' in info:
-                    logger.debug(f"Subtitles found with proxy")
-                    
-                    # Try to get manual subtitles first
-                    if 'subtitles' in info and info['subtitles']:
-                        for lang, subs in info['subtitles'].items():
-                            if lang.startswith('en'):
-                                for sub in subs:
-                                    if sub['ext'] == 'vtt':
-                                        logger.debug(f"Found manual subtitle with proxy")
-                                        return self._download_and_parse_subtitle(sub['url'])
-                    
-                    # Try automatic captions if no manual subtitles
-                    if 'automatic_captions' in info and info['automatic_captions']:
-                        for lang, subs in info['automatic_captions'].items():
-                            if lang.startswith('en'):
-                                for sub in subs:
-                                    if sub['ext'] == 'vtt':
-                                        logger.debug(f"Found automatic caption with proxy")
-                                        return self._download_and_parse_subtitle(sub['url'])
-                
-                logger.debug(f"No subtitles found with proxy")
-                return None
-                
-        except Exception as e:
-            logger.error(f"Error extracting transcript with proxy: {e}")
-            return None
-    
-    def _parse_subtitle_content(self, subtitle_content: str) -> str:
-        """Parse subtitle content and extract text"""
-        try:
-            import re
-            
-            # Remove timestamp lines and empty lines
-            lines = subtitle_content.split('\n')
-            text_lines = []
-            
-            for line in lines:
-                line = line.strip()
-                # Skip empty lines, timestamp lines, and subtitle index lines
-                if (line and 
-                    not re.match(r'^\d+$', line) and  # Index numbers
-                    not re.match(r'^\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}$', line)):  # Timestamps
-                    text_lines.append(line)
-            
-            return ' '.join(text_lines)
-            
-        except Exception as e:
-            logger.error(f"Error parsing subtitle content: {e}")
-            return subtitle_content
-    
+
     def _save_transcript(self, video_id: str, transcript: str):
         """Save transcript to file"""
         try:

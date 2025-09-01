@@ -166,6 +166,9 @@ class Summarizer:
     def _save_to_cache(self, cache_key: str, summary: str, metadata: Dict[str, Any]):
         """Save summary to cache"""
         cache_file = self.cache_dir / cache_key
+        logger.info(f"Attempting to save cache to: {cache_file.absolute()}")
+        logger.info(f"Cache directory exists: {self.cache_dir.exists()}")
+        logger.info(f"Cache directory is writable: {os.access(self.cache_dir, os.W_OK)}")
         try:
             data = {
                 'summary': summary,
@@ -175,6 +178,10 @@ class Summarizer:
             with open(cache_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
             logger.info(f"Saved summary to cache: {cache_key}")
+            # Verify file was written
+            logger.info(f"File written successfully. File exists: {cache_file.exists()}")
+            logger.info(f"File size: {cache_file.stat().st_size if cache_file.exists() else 'N/A'}")
+            
         except Exception as e:
             logger.error(f"Failed to save cache file {cache_key}: {e}")
 

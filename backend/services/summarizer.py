@@ -193,6 +193,12 @@ class Summarizer:
             logger.warning("Empty text provided for summarization")
             return None
 
+        # Check cache first
+        cache_key = self._get_cache_key(text, style)
+        cached_summary = self._load_from_cache(cache_key)
+        if cached_summary:
+            return cached_summary
+
         # Check if API key is available
         if not self.has_api_key():
             logger.error("No API key available. Cannot generate summary.")
@@ -208,11 +214,7 @@ class Summarizer:
             logger.warning(f"Invalid style '{style}', using 'comprehensive'")
             style = "comprehensive"
 
-        # Check cache first
-        cache_key = self._get_cache_key(text, style)
-        cached_summary = self._load_from_cache(cache_key)
-        if cached_summary:
-            return cached_summary
+        
 
         try:
             logger.info(f"Generating new summary with style: {style}")
